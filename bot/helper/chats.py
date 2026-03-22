@@ -21,8 +21,8 @@ async def posts_chat(channels):
                 <a href="/channel/{cid}" class="nm-platform-link" aria-label="Open {title}">
                     <article class="nm-platform-card">
                         <div class="nm-platform-logo-wrap">
-                            <img src="https://cdn.jsdelivr.net/gh/weebzone/weebzone/data/Surf-TG/src/loading.gif"
-                                class="lzy_img nm-platform-logo" data-src="{img}" loading="lazy" alt="{title}">
+                            <img src="{img}"
+                                class="nm-platform-logo" loading="lazy" alt="{title}" onerror="this.onerror=null;this.src='/static/logo.png';">
                         </div>
                         <div class="nm-platform-copy">
                             <span class="nm-platform-kicker">Telegram OTT</span>
@@ -45,8 +45,8 @@ async def post_playlist(playlists):
             </a>
             <a href="/playlist?db={cid}" class="nm-media-link">
                 <div class="nm-media-poster-wrap">
-                    <img src="https://cdn.jsdelivr.net/gh/weebzone/weebzone/data/Surf-TG/src/loading.gif"
-                        class="lzy_img nm-media-poster" data-src="{img}" loading="lazy" alt="{title}">
+                    <img src="{img}"
+                        class="nm-media-poster" loading="lazy" alt="{title}" onerror="this.onerror=null;this.src='/static/thumbnail.jpg';">
                     <div class="nm-media-overlay"></div>
                     <div class="nm-play-chip"><i class="bi bi-play-fill"></i></div>
                 </div>
@@ -73,8 +73,8 @@ async def posts_db_file(posts):
                     class="bi bi-pencil-square"></i></a>
             <a href="/watch/{chat_id}?id={id}&hash={hash}" class="nm-media-link">
                 <div class="nm-media-poster-wrap">
-                    <img src="https://cdn.jsdelivr.net/gh/weebzone/weebzone/data/Surf-TG/src/loading.gif" data-src="{img}"
-                        class="lzy_img nm-media-poster" loading="lazy" alt="{title}">
+                    <img src="{img}"
+                        class="nm-media-poster" loading="lazy" alt="{title}" onerror="this.onerror=null;this.src='/static/thumbnail.jpg';">
                     <div class="nm-media-overlay"></div>
                     <div class="nm-play-chip"><i class="bi bi-play-fill"></i></div>
                 </div>
