@@ -133,6 +133,7 @@ async def render_page(
 
             async with aiopen(ospath.join(tpath, "video.html")) as r:
                 poster = f"/api/thumb/{chat_id}?id={id}"
+                hls_master = f"/hls/{str(chat_id).replace('-100', '')}/master.m3u8?id={id}&hash={secure_hash}"
                 html = (
                     (await r.read())
                     .replace("<!-- Title -->", caption)
@@ -140,6 +141,7 @@ async def render_page(
                     .replace("<!-- Filename -->", filename)
                     .replace("<!-- Theme -->", theme.lower())
                     .replace("<!-- Poster -->", poster)
+                    .replace("<!-- HLSMaster -->", hls_master)
                     .replace("<!-- Size -->", size)
                     .replace("<!-- Tag -->", tag)
                     .replace("<!-- Username -->", StreamBot.me.username)

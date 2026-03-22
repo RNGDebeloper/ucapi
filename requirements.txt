@@ -11,3 +11,5 @@ pyrogram==2.0.106
 tmdbv3api
 requests
 
+
+imageio-ffmpeg

@@ -1,3 +1,4 @@
+from urllib.parse import quote
 import json
 import logging
 import math
@@ -17,6 +18,7 @@ from bot.helper.index import get_files, posts_file
 from bot.server.custom_dl import ByteStreamer
 from bot.server.render_template import render_page
 from bot.helper.cache import rm_cache
+from bot.server.hls import hls_manager
 
 from bot.telegram import StreamBot
 
@@ -323,6 +325,42 @@ async def get_thumbnail(request):
     response = web.FileResponse(img)
     response.content_type = "image/jpeg"
     return response
+
+
+
+
+@routes.get('/hls/{chat_id}/master.m3u8', allow_head=True)
+async def hls_master(request: web.Request):
+    session = await get_session(request)
+    if not session.get('user'):
+        session['redirect_url'] = request.path_qs
+        return web.HTTPFound('/login')
+
+    chat_id = request.match_info['chat_id']
+    full_chat_id = int(f"-100{chat_id}")
+    message_id = int(request.query.get('id'))
+    secure_hash = request.query.get('hash')
+    encoded_name = quote(request.query.get('name', f'video-{message_id}.mp4'))
+    token, _ = await hls_manager.ensure_stream(
+        base_url=str(request.url.origin()),
+        chat_id=full_chat_id,
+        message_id=message_id,
+        secure_hash=secure_hash,
+        file_name=encoded_name,
+    )
+    return await hls_manager.serve_path(token, 'master.m3u8')
+
+
+@routes.get('/hls/{chat_id}/{token}/{tail:.*}', allow_head=True)
+async def hls_asset(request: web.Request):
+    session = await get_session(request)
+    if not session.get('user'):
+        session['redirect_url'] = request.path_qs
+        return web.HTTPFound('/login')
+
+    token = request.match_info['token']
+    tail = request.match_info['tail']
+    return await hls_manager.serve_path(token, tail)
 
 
 @routes.get('/watch/{chat_id}', allow_head=True)
