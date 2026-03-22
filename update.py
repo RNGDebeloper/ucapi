@@ -16,7 +16,7 @@ basicConfig(
 load_dotenv('config.env', override=True)
 
 UPSTREAM_REPO = getenv('UPSTREAM_REPO', "https://github.com/SasukeXDev/tgstr")
-UPSTREAM_BRANCH = getenv('UPSTREAM_BRANCH', "codex/redesign-surf-tg-website-ui-for-ott-platform")
+UPSTREAM_BRANCH = getenv('UPSTREAM_BRANCH', "codex/fix-channel-loading-issues-and-remove-sources-d0mhce")
 
 if UPSTREAM_REPO is not None:
     if opath.exists('.git'):
