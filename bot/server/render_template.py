@@ -39,6 +39,8 @@ async def render_page(
     redirect_url="",
     msg="",
     chat_id="",
+    verify_nonce="",
+    verify_wait=0,
 ):
     theme = await db.get_variable("theme")
     if theme is None or theme == "":
@@ -51,6 +53,8 @@ async def render_page(
                 .replace("<!-- Error -->", msg or "")
                 .replace("<!-- Theme -->", theme.lower())
                 .replace("<!-- RedirectURL -->", redirect_url)
+                .replace("<!-- VerifyNonce -->", verify_nonce)
+                .replace("<!-- VerifyWait -->", str(verify_wait))
             )
     elif route == "home":
         async with aiopen(ospath.join(tpath, "home.html"), "r") as f:
