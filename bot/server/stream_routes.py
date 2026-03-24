@@ -3,6 +3,7 @@ import logging
 import math
 import mimetypes
 import secrets
+import time
 from aiohttp import web
 from aiohttp.http_exceptions import BadStatusLine
 from bot.helper.chats import get_chats, post_playlist, posts_chat, posts_db_file
@@ -24,11 +25,33 @@ client_cache = {}
 
 routes = web.RouteTableDef()
 db = Database()
+VERIFICATION_WINDOW_SECONDS = 24 * 60 * 60
+
+
+def is_verified_session(session):
+    username = session.get('user')
+    verified_at = session.get('verified_at')
+    if not username or not verified_at:
+        return False
+    return (int(time.time()) - int(verified_at)) < VERIFICATION_WINDOW_SECONDS
+
+
+async def get_verified_user(request):
+    session = await get_session(request)
+    if is_verified_session(session):
+        return session, session.get('user')
+    session.pop('user', None)
+    session.pop('verified_at', None)
+    session['redirect_url'] = request.path_qs
+    raise web.HTTPFound('/login')
 
 
 @routes.get('/login')
 async def login_form(request):
     session = await get_session(request)
+    if is_verified_session(session):
+        redirect_url = session.pop('redirect_url', '/')
+        raise web.HTTPFound(redirect_url)
     redirect_url = session.get('redirect_url', '/')
     return web.Response(text=await render_page(None, None, route='login', redirect_url=redirect_url), content_type='text/html')
 
@@ -36,7 +59,7 @@ async def login_form(request):
 @routes.post('/login')
 async def login_route(request):
     session = await get_session(request)
-    if 'user' in session:
+    if is_verified_session(session):
         return web.HTTPFound('/')
     data = await request.post()
     username = data.get('username')
@@ -44,6 +67,7 @@ async def login_route(request):
     error_message = None
     if (username == Telegram.USERNAME and password == Telegram.PASSWORD) or (username == Telegram.ADMIN_USERNAME and password == Telegram.ADMIN_PASSWORD):
         session['user'] = username
+        session['verified_at'] = int(time.time())
         if 'redirect_url' not in session:
             session['redirect_url'] = '/'
         redirect_url = session['redirect_url']
@@ -54,17 +78,31 @@ async def login_route(request):
     return web.Response(text=await render_page(None, None, route='login', msg=error_message), content_type='text/html')
 
 
+@routes.post('/verify-access')
+async def verify_access_route(request):
+    session = await get_session(request)
+    if is_verified_session(session):
+        return web.HTTPFound('/')
+    data = await request.post()
+    session['user'] = Telegram.USERNAME
+    session['verified_at'] = int(time.time())
+    redirect_url = data.get('redirect_url') or session.get('redirect_url', '/')
+    session.pop('redirect_url', None)
+    return web.HTTPFound(redirect_url)
+
+
 @routes.post('/logout')
 async def logout_route(request):
     session = await get_session(request)
     session.pop('user', None)
+    session.pop('verified_at', None)
     return web.HTTPFound('/login')
 
 
 @routes.post('/create')
 async def create_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
     data = await request.post()
     folderName = data.get('folderName')
@@ -80,8 +118,8 @@ async def create_route(request):
 
 @routes.post('/delete')
 async def delete_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
     data = await request.json()
     id = data.get('delete_id')
@@ -96,8 +134,8 @@ async def delete_route(request):
 
 @routes.post('/edit')
 async def editFolder_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
     data = await request.post()
     folderName = data.get('folderName')
@@ -115,8 +153,8 @@ async def editFolder_route(request):
 
 @routes.post('/edit_post')
 async def editPost_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
     data = await request.post()
     fileName = data.get('fileName')
@@ -134,8 +172,8 @@ async def editPost_route(request):
 
 @routes.get('/searchDbFol')
 async def searchDbFolder_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
     query = request.query.get('query', '')
     folder_names = await db.search_DbFolder(query)
@@ -144,6 +182,9 @@ async def searchDbFolder_route(request):
 
 @routes.post('/send')
 async def send_route(request):
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
+        return web.json_response({'msg': 'Who the hell you are'})
     data = await request.post()
     chat_id = data.get('chatId')
     chat_id = f"-100{chat_id}"
@@ -178,8 +219,8 @@ async def send_route(request):
 
 @routes.get('/reload')
 async def reload_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
 
     chat_id = request.query.get('chatId', '')
@@ -193,8 +234,8 @@ async def reload_route(request):
 
 @routes.post('/config')
 async def editConfig_route(request):
-    session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
+    _, username = await get_verified_user(request)
+    if username != Telegram.ADMIN_USERNAME:
         return web.json_response({'msg': 'Who the hell you are'})
     data = await request.post()
     channel = data.get('channel')
@@ -208,109 +249,89 @@ async def editConfig_route(request):
 
 @routes.get('/')
 async def home_route(request):
-    session = await get_session(request)
-    if username := session.get('user'):
-        try:
-            channels = await get_chats()
-            playlists = await db.get_Dbfolder()
-            phtml = await posts_chat(channels)
-            dhtml = await post_playlist(playlists)
-            is_admin = username == Telegram.ADMIN_USERNAME
-            return web.Response(text=await render_page(None, None, route='home', html=phtml, playlist=dhtml, is_admin=is_admin), content_type='text/html')
-        except Exception as e:
-            logging.critical(e.with_traceback(None))
-            raise web.HTTPInternalServerError(text=str(e)) from e
-    else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+    _, username = await get_verified_user(request)
+    try:
+        channels = await get_chats()
+        playlists = await db.get_Dbfolder()
+        phtml = await posts_chat(channels)
+        dhtml = await post_playlist(playlists)
+        is_admin = username == Telegram.ADMIN_USERNAME
+        return web.Response(text=await render_page(None, None, route='home', html=phtml, playlist=dhtml, is_admin=is_admin), content_type='text/html')
+    except Exception as e:
+        logging.critical(e.with_traceback(None))
+        raise web.HTTPInternalServerError(text=str(e)) from e
 
 
 @routes.get('/playlist')
 async def playlist_route(request):
-    session = await get_session(request)
-    if username := session.get('user'):
-        try:
-            parent_id = request.query.get('db')
-            page = request.query.get('page', '1')
-            playlists = await db.get_Dbfolder(parent_id, page=page)
-            files = await db.get_dbFiles(parent_id, page=page)
-            text = await db.get_info(parent_id)
-            dhtml = await post_playlist(playlists)
-            dphtml = await posts_db_file(files)
-            is_admin = username == Telegram.ADMIN_USERNAME
-            return web.Response(text=await render_page(parent_id, None, route='playlist', playlist=dhtml, database=dphtml, msg=text, is_admin=is_admin), content_type='text/html')
-        except Exception as e:
-            logging.critical(e.with_traceback(None))
-            raise web.HTTPInternalServerError(text=str(e)) from e
-    else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+    _, username = await get_verified_user(request)
+    try:
+        parent_id = request.query.get('db')
+        page = request.query.get('page', '1')
+        playlists = await db.get_Dbfolder(parent_id, page=page)
+        files = await db.get_dbFiles(parent_id, page=page)
+        text = await db.get_info(parent_id)
+        dhtml = await post_playlist(playlists)
+        dphtml = await posts_db_file(files)
+        is_admin = username == Telegram.ADMIN_USERNAME
+        return web.Response(text=await render_page(parent_id, None, route='playlist', playlist=dhtml, database=dphtml, msg=text, is_admin=is_admin), content_type='text/html')
+    except Exception as e:
+        logging.critical(e.with_traceback(None))
+        raise web.HTTPInternalServerError(text=str(e)) from e
 
 
 @routes.get('/search/db/{parent}')
 async def dbsearch_route(request):
-    session = await get_session(request)
-    if username := session.get('user'):
-        parent = request.match_info['parent']
-        page = request.query.get('page', '1')
-        query = request.query.get('q')
-        is_admin = username == Telegram.ADMIN_USERNAME
-        try:
-            files = await db.search_dbfiles(id=parent, page=page, query=query)
-            dphtml = await posts_db_file(files)
-            name = await db.get_info(parent)
-            text = f"{name} - {query}"
-            return web.Response(text=await render_page(parent, None, route='playlist', database=dphtml, msg=text, is_admin=is_admin), content_type='text/html')
-        except Exception as e:
-            logging.critical(e.with_traceback(None))
-            raise web.HTTPInternalServerError(text=str(e)) from e
-    else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+    _, username = await get_verified_user(request)
+    parent = request.match_info['parent']
+    page = request.query.get('page', '1')
+    query = request.query.get('q')
+    is_admin = username == Telegram.ADMIN_USERNAME
+    try:
+        files = await db.search_dbfiles(id=parent, page=page, query=query)
+        dphtml = await posts_db_file(files)
+        name = await db.get_info(parent)
+        text = f"{name} - {query}"
+        return web.Response(text=await render_page(parent, None, route='playlist', database=dphtml, msg=text, is_admin=is_admin), content_type='text/html')
+    except Exception as e:
+        logging.critical(e.with_traceback(None))
+        raise web.HTTPInternalServerError(text=str(e)) from e
 
 
 @routes.get('/channel/{chat_id}')
 async def channel_route(request):
-    session = await get_session(request)
-    if username := session.get('user'):
-        chat_id = request.match_info['chat_id']
-        chat_id = f"-100{chat_id}"
-        page = request.query.get('page', '1')
-        is_admin = username == Telegram.ADMIN_USERNAME
-        try:
-            posts = await get_files(chat_id, page=page)
-            phtml = await posts_file(posts, chat_id)
-            chat = await StreamBot.get_chat(int(chat_id))
-            return web.Response(text=await render_page(None, None, route='index', html=phtml, msg=chat.title, chat_id=chat_id.replace("-100", ""), is_admin=is_admin), content_type='text/html')
-        except Exception as e:
-            logging.critical(e.with_traceback(None))
-            raise web.HTTPInternalServerError(text=str(e)) from e
-    else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+    _, username = await get_verified_user(request)
+    chat_id = request.match_info['chat_id']
+    chat_id = f"-100{chat_id}"
+    page = request.query.get('page', '1')
+    is_admin = username == Telegram.ADMIN_USERNAME
+    try:
+        posts = await get_files(chat_id, page=page)
+        phtml = await posts_file(posts, chat_id)
+        chat = await StreamBot.get_chat(int(chat_id))
+        return web.Response(text=await render_page(None, None, route='index', html=phtml, msg=chat.title, chat_id=chat_id.replace("-100", ""), is_admin=is_admin), content_type='text/html')
+    except Exception as e:
+        logging.critical(e.with_traceback(None))
+        raise web.HTTPInternalServerError(text=str(e)) from e
 
 
 @routes.get('/search/{chat_id}')
 async def search_route(request):
-    session = await get_session(request)
-    if username := session.get('user'):
-        chat_id = request.match_info['chat_id']
-        chat_id = f"-100{chat_id}"
-        page = request.query.get('page', '1')
-        query = request.query.get('q')
-        is_admin = username == Telegram.ADMIN_USERNAME
-        try:
-            posts = await search(chat_id, page=page, query=query)
-            phtml = await posts_file(posts, chat_id)
-            chat = await StreamBot.get_chat(int(chat_id))
-            text = f"{chat.title} - {query}"
-            return web.Response(text=await render_page(None, None, route='index', html=phtml, msg=text, chat_id=chat_id.replace("-100", ""), is_admin=is_admin), content_type='text/html')
-        except Exception as e:
-            logging.critical(e.with_traceback(None))
-            raise web.HTTPInternalServerError(text=str(e)) from e
-    else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+    _, username = await get_verified_user(request)
+    chat_id = request.match_info['chat_id']
+    chat_id = f"-100{chat_id}"
+    page = request.query.get('page', '1')
+    query = request.query.get('q')
+    is_admin = username == Telegram.ADMIN_USERNAME
+    try:
+        posts = await search(chat_id, page=page, query=query)
+        phtml = await posts_file(posts, chat_id)
+        chat = await StreamBot.get_chat(int(chat_id))
+        text = f"{chat.title} - {query}"
+        return web.Response(text=await render_page(None, None, route='index', html=phtml, msg=text, chat_id=chat_id.replace("-100", ""), is_admin=is_admin), content_type='text/html')
+    except Exception as e:
+        logging.critical(e.with_traceback(None))
+        raise web.HTTPInternalServerError(text=str(e)) from e
 
 
 @routes.get('/api/thumb/{chat_id}', allow_head=True)
@@ -327,27 +348,23 @@ async def get_thumbnail(request):
 
 @routes.get('/watch/{chat_id}', allow_head=True)
 async def stream_handler_watch(request: web.Request):
-    session = await get_session(request)
-    if username := session.get('user'):
-        try:
-            chat_id = request.match_info['chat_id']
-            chat_id = f"-100{chat_id}"
-            message_id = request.query.get('id')
-            secure_hash = request.query.get('hash')
-            return web.Response(text=await render_page(message_id, secure_hash, chat_id=chat_id), content_type='text/html')
-        except InvalidHash as e:
-            raise web.HTTPForbidden(text=e.message) from e
-        except FIleNotFound as e:
-            db.delete_file(chat_id=chat_id, msg_id=message_id, hash=secure_hash)
-            raise web.HTTPNotFound(text=e.message) from e
-        except (AttributeError, BadStatusLine, ConnectionResetError):
-            pass
-        except Exception as e:
-            logging.critical(e.with_traceback(None))
-            raise web.HTTPInternalServerError(text=str(e)) from e
-    else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+    await get_verified_user(request)
+    try:
+        chat_id = request.match_info['chat_id']
+        chat_id = f"-100{chat_id}"
+        message_id = request.query.get('id')
+        secure_hash = request.query.get('hash')
+        return web.Response(text=await render_page(message_id, secure_hash, chat_id=chat_id), content_type='text/html')
+    except InvalidHash as e:
+        raise web.HTTPForbidden(text=e.message) from e
+    except FIleNotFound as e:
+        db.delete_file(chat_id=chat_id, msg_id=message_id, hash=secure_hash)
+        raise web.HTTPNotFound(text=e.message) from e
+    except (AttributeError, BadStatusLine, ConnectionResetError):
+        pass
+    except Exception as e:
+        logging.critical(e.with_traceback(None))
+        raise web.HTTPInternalServerError(text=str(e)) from e
 
 
 @routes.get('/{chat_id}/{encoded_name}', allow_head=True)
