@@ -12,6 +12,7 @@ class Database:
         self.collection = self.db["playlist"]
         self.config = self.db["config"]
         self.files = self.db["files"]
+        self.verifications = self.db["verifications"]
 
     async def create_folder(self, parent_id, folder_name, thumbnail):
         folder = {"parent_folder": parent_id, "name": folder_name,
@@ -123,3 +124,18 @@ class Database:
     
     async def add_btgfiles(self, data):
         result = self.files.insert_many(data)
+
+    async def save_verification(self, visitor_id, ip_address, user_agent, verified_at, expires_at):
+        payload = {
+            "visitor_id": visitor_id,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "verified_at": verified_at,
+            "expires_at": expires_at,
+        }
+        result = self.verifications.update_one(
+            {"visitor_id": visitor_id},
+            {"$set": payload},
+            upsert=True
+        )
+        return result.acknowledged

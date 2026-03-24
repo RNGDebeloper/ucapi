@@ -1,228 +1,120 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="https://homies-theta.vercel.app/logo.png" type="image/x-icon"><link rel="shortcut icon" href="https://homies-theta.vercel.app/logo.png" type="image/x-icon"><meta name="google-site-verification" content="ah70imZftJ_jasyZPjvWySgKttv2r5Qeuo_e-ixZo4s" /><meta name="description" content="Sign in to 360Hub and continue streaming your Telegram-powered library." /><title>360Hub: Login</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"><link rel="stylesheet" href="https://bootswatch.com/5/<!-- Theme -->/bootstrap.min.css"><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script><style>
-:root {
-    --bg: #07080d;
-    --bg-soft: #11141d;
-    --panel: rgba(17, 20, 29, 0.92);
-    --panel-strong: rgba(10, 12, 18, 0.96);
-    --line: rgba(255,255,255,0.08);
-    --text: #f5f7fb;
-    --muted: #9ca3b6;
-    --accent: #e50914;
-    --accent-2: #7c3aed;
-    --success: #10b981;
-    --shadow: 0 20px 50px rgba(0,0,0,0.45);
-}
-html { min-height: 100%; scroll-behavior: smooth; }
-body {
-    min-height: 100vh;
-    margin: 0;
-    color: var(--text);
-    background:
-        radial-gradient(circle at top left, rgba(124,58,237,0.22), transparent 28%),
-        radial-gradient(circle at top right, rgba(229,9,20,0.18), transparent 32%),
-        linear-gradient(180deg, #0b0d13 0%, #07080d 45%, #05060a 100%);
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-a { text-decoration: none; color: inherit; }
-img { max-width: 100%; }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; }
-::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
-.navbar.ott-navbar {
-    position: sticky; top: 0; z-index: 1030;
-    backdrop-filter: blur(18px);
-    background: rgba(6,7,12,0.82) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.28);
-}
-.brand-wrap { display:flex; align-items:center; gap: .85rem; }
-.brand-mark {
-    width: 44px; height: 44px; border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    padding: 2px; box-shadow: 0 10px 26px rgba(124,58,237,0.35);
-}
-.brand-mark img { width:100%; height:100%; border-radius: 12px; object-fit: cover; background:#000; }
-.brand-copy small { display:block; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; font-size:.65rem; }
-.brand-copy strong { font-size:1rem; letter-spacing:.03em; }
-.nav-link { color: rgba(255,255,255,.72) !important; }
-.nav-link:hover, .nav-link.active { color: #fff !important; }
-.ott-shell { width:min(1360px, calc(100% - 2rem)); margin: 0 auto; }
-.hero-banner {
-    position: relative; overflow:hidden; border-radius: 28px; min-height: clamp(320px, 52vw, 580px);
-    background: linear-gradient(100deg, rgba(5,6,10,.94) 22%, rgba(5,6,10,.52) 58%, rgba(5,6,10,.25) 100%),
-        url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1400&q=80') center/cover;
-    box-shadow: var(--shadow); border:1px solid rgba(255,255,255,0.08);
-}
-.hero-overlay { position:absolute; inset:0; background: linear-gradient(180deg, transparent 45%, rgba(7,8,13,.88) 100%); }
-.hero-content { position:relative; z-index:1; padding: clamp(1.4rem, 4vw, 3.5rem); width:min(640px, 100%); }
-.eyebrow { color:#d1d5e5; text-transform:uppercase; letter-spacing:.3em; font-size:.75rem; }
-.display-title { font-size: clamp(2.2rem, 5vw, 4.6rem); font-weight: 800; line-height: 0.95; margin: .7rem 0 1rem; }
-.lead-copy, .section-copy, .meta-text { color: var(--muted); }
-.glass-card, .modal-content, .card, .list-group-item, .alert, .page-link {
-    background: var(--panel) !important;
-    color: var(--text) !important;
-    border: 1px solid var(--line) !important;
-    border-radius: 22px !important;
-    box-shadow: var(--shadow);
-}
-.modal-content { background: var(--panel-strong) !important; }
-.card-header, .modal-header { border-bottom: 1px solid var(--line) !important; background: transparent !important; }
-.footer-ott { color: var(--muted); padding: 2rem 0 3rem; text-align:center; }
-.btn { border-radius: 999px; font-weight: 600; letter-spacing: .01em; }
-.btn-primary {
-    background: linear-gradient(135deg, var(--accent), #ff4d4d) !important;
-    border: none !important; box-shadow: 0 12px 24px rgba(229, 9, 20, .28);
-}
-.btn-secondary {
-    background: rgba(255,255,255,.08) !important; border:1px solid rgba(255,255,255,.12) !important;
-    color:#fff !important;
-}
-.btn-outline-light { border-color: rgba(255,255,255,.2); }
-.form-control, .form-select {
-    background: rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.12) !important;
-    color: var(--text) !important; border-radius: 16px; padding: .85rem 1rem;
-}
-.form-control::placeholder { color: #8d95a8; }
-.form-control:focus, .form-select:focus {
-    box-shadow: 0 0 0 .2rem rgba(124,58,237,.18) !important; border-color: rgba(124,58,237,.55) !important;
-}
-.ott-toolbar { display:flex; gap:1rem; align-items:center; justify-content:space-between; flex-wrap:wrap; margin: 1.25rem 0 1.5rem; }
-.section-head { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom: 1rem; }
-.section-head h2, .section-head h3 { margin:0; font-weight:800; }
-.scroll-strip { display:flex; gap:1rem; overflow:auto; padding-bottom: .75rem; scroll-snap-type:x proximity; }
-.scroll-strip > * { scroll-snap-align:start; }
-.poster-card, .content-tile {
-    position:relative; overflow:hidden; border-radius: 22px; min-height: 280px;
-    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-    border:1px solid rgba(255,255,255,.08); box-shadow: var(--shadow); transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
-}
-.poster-card:hover, .content-tile:hover, .col:hover { transform: translateY(-6px) scale(1.01); border-color: rgba(229,9,20,.5); box-shadow: 0 24px 40px rgba(0,0,0,.42); }
-.tile-thumb {
-    aspect-ratio: 2 / 3; width: 100%; object-fit: cover; background: linear-gradient(135deg, #181b24, #10131b);
-}
-.tile-overlay {
-    position:absolute; inset:0; background: linear-gradient(180deg, rgba(8,10,14,0.05) 0%, rgba(8,10,14,0.3) 48%, rgba(8,10,14,0.96) 100%);
-}
-.tile-content { position:absolute; inset:auto 0 0 0; padding: 1rem; z-index:1; }
-.tile-play {
-    position:absolute; right:1rem; top:1rem; width:44px; height:44px; border-radius:50%; display:grid; place-items:center;
-    background: rgba(255,255,255,.12); backdrop-filter: blur(6px); color:#fff; z-index:1;
-}
-.tile-badge { display:inline-flex; gap:.35rem; align-items:center; font-size:.72rem; color:#fff; border-radius:999px; padding:.35rem .7rem; background: rgba(124,58,237,.28); border:1px solid rgba(255,255,255,.1); }
-.grid-cards > .col, .grid-cards > [class*='col-'] { padding: .55rem; }
-.tile-title {
-    font-weight:700; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-}
-.meta-row { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.65rem; }
-.search-panel { padding: 1rem; }
-.pagination .page-link { margin: 0 .25rem; color:#fff; }
-.pagination .page-item.disabled .page-link { opacity: .5; }
-.skeleton-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:1rem; }
-.skeleton-tile { min-height: 260px; border-radius: 22px; position:relative; overflow:hidden; background: rgba(255,255,255,.06); }
-.skeleton-tile::after {
-    content:''; position:absolute; inset:0; transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.13), transparent);
-    animation: shimmer 1.7s infinite;
-}
-@keyframes shimmer { 100% { transform: translateX(100%);} }
-.fade-in { animation: fadeIn .7s ease both; }
-@keyframes fadeIn { from { opacity:0; transform: translateY(18px);} to { opacity:1; transform:none;} }
-.player-layout { display:grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, .9fr); gap:1.5rem; align-items:start; }
-.video-stage, .info-panel { padding: 1rem; }
-.video-stage .plyr, .video-stage video { border-radius: 24px; overflow:hidden; }
-.action-cluster { display:flex; flex-wrap:wrap; gap:.75rem; }
-.download-actions .btn { min-width: 140px; }
-.notice-panel { border-left: 3px solid var(--accent) !important; }
-.login-shell { width:min(1120px, calc(100% - 2rem)); margin: 0 auto; min-height: calc(100vh - 90px); display:grid; grid-template-columns: 1.1fr .9fr; gap:1.5rem; align-items:center; }
-.login-hero { padding: clamp(1.5rem, 3vw, 3rem); }
-.login-card { padding: 1.5rem; }
-.channel-list .list-group-item { margin-bottom: .85rem; }
-@media (max-width: 991px) {
-    .player-layout, .login-shell { grid-template-columns: 1fr; }
-    .hero-banner { min-height: 420px; }
-}
-@media (max-width: 767px) {
-    .ott-shell { width: min(100% - 1rem, 1360px); }
-    .display-title { font-size: 2.5rem; }
-    .hero-content { padding: 1.25rem; }
-    .download-actions .btn, .action-cluster .btn { width: 100%; }
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="https://homies-theta.vercel.app/logo.png" type="image/x-icon" />
+  <link rel="shortcut icon" href="https://homies-theta.vercel.app/logo.png" type="image/x-icon" />
+  <meta name="description" content="Verify access to 360Hub and continue streaming your Telegram-powered library." />
+  <title>360Hub: Access Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://bootswatch.com/5/<!-- Theme -->/bootstrap.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { min-height: 100vh; font-family: 'Inter', sans-serif; background: radial-gradient(circle at top, #1f2f7a, #050711 55%); color: #f7f8ff; }
+    .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; }
+    .auth-card { width: min(700px, 100%); background: rgba(8, 12, 26, 0.88); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; box-shadow: 0 20px 45px rgba(0,0,0,0.35); }
+    .brand { display:flex; align-items:center; gap:.75rem; margin-bottom:1rem; }
+    .brand img { width: 44px; height:44px; border-radius:12px; }
+    .badge-pill { display:inline-flex; align-items:center; gap:.45rem; border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:.35rem .75rem; font-size:.84rem; }
+    .muted { color: rgba(238, 240, 255, 0.76); }
+    .countdown { min-height: 1.5rem; font-weight: 600; }
+    .admin-login { border-top: 1px solid rgba(255,255,255,.12); margin-top:1.25rem; padding-top:1rem; }
+  </style>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card p-4 p-md-5">
+      <div class="brand">
+        <img src="https://homies-theta.vercel.app/logo.png" alt="360Hub" />
+        <div>
+          <div class="small text-uppercase muted">OTT Streaming</div>
+          <h1 class="h4 mb-0">360Hub Access Verification</h1>
+        </div>
+      </div>
 
-.ott-app-new,
-.ott-app-new body { background: #07080d; }
-.ott-app-new .nm-platform-col,
-.ott-app-new .nm-rail-col { min-width: 0; }
-.ott-app-new .nm-platform-link,
-.ott-app-new .nm-media-link { display:block; }
-.ott-app-new .nm-platform-card {
-    display:flex; align-items:center; gap:1rem; min-height: 112px; padding: 1rem 1.1rem;
-    border-radius: 24px; border: 1px solid rgba(255,255,255,.08);
-    background: linear-gradient(145deg, rgba(19,22,33,.98), rgba(10,11,18,.96));
-    box-shadow: 0 16px 40px rgba(0,0,0,.35);
-    transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
-}
-.ott-app-new .nm-platform-card:hover { transform: translateY(-6px); border-color: rgba(229,9,20,.45); box-shadow: 0 24px 46px rgba(0,0,0,.5); }
-.ott-app-new .nm-platform-logo-wrap {
-    width: 72px; height: 72px; border-radius: 22px; overflow:hidden; flex: 0 0 72px;
-    background: linear-gradient(135deg, rgba(229,9,20,.22), rgba(124,58,237,.22)); padding: 3px;
-}
-.ott-app-new .nm-platform-logo { width:100%; height:100%; object-fit:cover; border-radius: 19px; background:#0b0b0b; }
-.ott-app-new .nm-platform-kicker, .ott-app-new .nm-media-tag { color: #d1d5db; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; }
-.ott-app-new .nm-platform-title { margin:.25rem 0; font-size:1rem; font-weight:700; color:#fff; }
-.ott-app-new .nm-platform-pill,
-.ott-app-new .nm-media-badge {
-    display:inline-flex; align-items:center; justify-content:center; min-height: 28px;
-    padding:.3rem .72rem; border-radius:999px; background: rgba(255,255,255,.08); color:#fff;
-    border: 1px solid rgba(255,255,255,.1); font-size:.75rem;
-}
-.ott-app-new .nm-media-badge--info { background: rgba(124,58,237,.24); }
-.ott-app-new .nm-media-card {
-    position:relative; height:100%; overflow:hidden; border-radius: 24px;
-    background: linear-gradient(180deg, rgba(18,20,30,.98), rgba(8,9,14,.98));
-    border:1px solid rgba(255,255,255,.08); box-shadow: 0 22px 45px rgba(0,0,0,.34);
-    transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
-}
-.ott-app-new .nm-media-card:hover { transform: translateY(-8px) scale(1.02); border-color: rgba(229,9,20,.42); box-shadow: 0 28px 54px rgba(0,0,0,.52); }
-.ott-app-new .nm-media-poster-wrap { position:relative; aspect-ratio: 2/3; overflow:hidden; background:#111; }
-.ott-app-new .nm-media-poster { width:100%; height:100%; object-fit:cover; display:block; }
-.ott-app-new .nm-media-overlay {
-    position:absolute; inset:0; background: linear-gradient(180deg, rgba(7,8,13,.04) 10%, rgba(7,8,13,.36) 55%, rgba(7,8,13,.95) 100%);
-}
-.ott-app-new .nm-play-chip {
-    position:absolute; inset:auto auto 1rem 1rem; width: 48px; height: 48px; display:grid; place-items:center;
-    border-radius:50%; background: linear-gradient(135deg, #e50914, #7c3aed); color:#fff; font-size:1.2rem;
-    box-shadow: 0 16px 28px rgba(0,0,0,.35); opacity:0; transform: translateY(12px); transition: all .3s ease;
-}
-.ott-app-new .nm-media-card:hover .nm-play-chip { opacity:1; transform: translateY(0); }
-.ott-app-new .nm-media-body { padding: 1rem 1rem 1.1rem; }
-.ott-app-new .nm-media-title {
-    margin: .35rem 0 .7rem; color:#fff; font-weight:700; line-height:1.35;
-    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-height: 2.7em;
-}
-.ott-app-new .nm-meta-row { display:flex; flex-wrap:wrap; gap:.45rem; }
-.ott-app-new .nm-edit-btn,
-.ott-app-new .nm-select-box {
-    position:absolute !important; top: .9rem !important; right: .9rem !important; z-index:3;
-}
-.ott-app-new .nm-edit-btn {
-    width: 38px; height: 38px; display:grid; place-items:center; border-radius: 50%;
-    background: rgba(7,8,13,.72); color:#fff; border:1px solid rgba(255,255,255,.12);
-    backdrop-filter: blur(8px);
-}
-.ott-app-new .nm-select-box { width: 1.15rem; height: 1.15rem; }
-.ott-app-new .grid-cards { row-gap: 1rem !important; }
-.ott-app-new .scroll-strip { display:flex !important; flex-wrap:nowrap !important; overflow-x:auto !important; padding-bottom: .85rem; }
-.ott-app-new .scroll-strip > * { flex: 0 0 min(320px, 84vw); }
-.ott-app-new .hero-banner::before {
-    content:''; position:absolute; inset:0; background: linear-gradient(90deg, rgba(5,6,10,.92) 20%, rgba(5,6,10,.5) 55%, rgba(5,6,10,.15) 100%);
-}
-.ott-app-new .glass-card { overflow:hidden; }
-.ott-app-new .search-panel, .ott-app-new .glass-card { backdrop-filter: blur(16px); }
-.ott-app-new .pagination .page-link { background: rgba(255,255,255,.06) !important; }
-.ott-app-new .navbar-toggler { border-color: rgba(255,255,255,.16); }
-@media (max-width: 767px) {
-    .ott-app-new .nm-platform-card { min-height: 96px; padding: .9rem; }
-    .ott-app-new .nm-platform-logo-wrap { width: 60px; height: 60px; flex-basis: 60px; }
-}
+      <p class="muted mb-3">To continue, open the sponsor link and complete the short wait. After verification, you can use the site directly for <strong>24 hours</strong> without username/password login.</p>
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <span class="badge-pill">✅ No manual login required</span>
+        <span class="badge-pill">⏱️ Access valid for 24 hours</span>
+      </div>
 
-</style></head><body class="ott-app-new"><nav class="navbar navbar-expand-lg ott-navbar" data-bs-theme="dark"><div class="ott-shell container-fluid py-2"><a class="navbar-brand brand-wrap" href="/"><span class="brand-mark"><img src="https://homies-theta.vercel.app/logo.png" alt="Logo"></span><span class="brand-copy"><small>Secure entry</small><strong>360Hub</strong></span></a></div></nav><main class="login-shell fade-in"><section class="hero-banner login-hero"><div class="hero-overlay"></div><div class="hero-content"><div class="eyebrow">Welcome back</div><h1 class="display-title">Your Telegram content, reimagined like a premium streaming service.</h1><p class="lead-copy mb-4">Everything behind the scenes stays intact. This is a visual-only redesign with a more polished OTT-style experience across desktop and mobile.</p><div class="meta-row"><span class="tile-badge">Admin: admin</span><span class="tile-badge">Password: admin</span></div></div></section><section class="glass-card login-card"><div><div class="eyebrow">Sign in</div><h2 class="h3 fw-bold mb-1">Continue watching</h2><p class="section-copy mb-3">Use your existing credentials to access the same backend-powered library.</p></div><div class="alert alert-dismissible alert-danger error-popup" id="errorPopup"><strong>Oh snap! <!-- Error --></strong></div><div id="loginContainer"><form id="signinForm" action="/login" method="post"><input type="hidden" name="redirect_url" value="{{ redirect_url }}"><fieldset><div class="inputBox"><label for="exampleInputUsername" class="form-label mt-2">Username</label><input type="text" class="form-control" id="exampleInputUsername" name="username" placeholder="Enter username"></div><div class="inputBox"><label for="exampleInputPassword1" class="form-label mt-4">Password</label><input type="password" class="form-control" id="exampleInputPassword1" name="password" placeholder="Password" autocomplete="off"></div><div class="text-center mt-4"><button type="submit" class="btn btn-primary inputBox w-100">Submit</button></div></fieldset></form></div></section></main><footer class="footer-ott"><div class="ott-shell">Made with ❤️ by <a href="https://t.me/Uchiha_Developer" target="_blank">Sasuke Uchiha</a><br>&copy; 2025 <a href="https://360hub.fun" target="_blank">360Hub</a>. All Rights Reserved.</div></footer><div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content text-center"><div class="modal-header border-0"><h5 class="modal-title w-100" id="infoModalLabel"><b>Important Notice!</b></h5></div><div class="modal-body"><p>We Need Support to run the App & Site!</p><p>1. Please click the below ADS Button and wait 10–25 seconds.</p><p>2. After that back to app or site! </p><p>3. The login page will appear automatically.</p><a href="https://www.effectivegatecpm.com/fhc2mgst?key=adbfe79f99ae39dbb10678b4777a7aca" target="_blank" class="btn btn-primary" id="startBtn"><h2>Open Now!</h2></a><div id="countdown" class="mt-3 text-muted"></div></div></div></div></div><script async src="https://www.googletagmanager.com/gtag/js?id=G-0ER9KSVEH8"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'G-0ER9KSVEH8');</script><script>window.onload=function(){var errorPopup=document.getElementById("errorPopup");var errorMessage=errorPopup.querySelector("strong").innerText.trim();if(errorMessage!=="Oh snap! Invalid username or password"){errorPopup.style.display="none";}if(errorMessage==="Oh snap! Invalid username or password"){setTimeout(function(){errorPopup.style.display="none";},5000);}};document.addEventListener("DOMContentLoaded",()=>{const loginContainer=document.getElementById("loginContainer");const modalEl=document.getElementById("infoModal");const countdownEl=document.getElementById("countdown");const startBtn=document.getElementById("startBtn");const modal=new bootstrap.Modal(modalEl,{backdrop:'static',keyboard:false});const lastShown=parseInt(localStorage.getItem("popupLastShown")||"0",10);const now=Date.now();const DAY=24*60*60*1000;if(!lastShown||(now-lastShown)>DAY){modal.show();startBtn.onclick=()=>{const delay=Math.floor(Math.random()*10)+10;let remaining=delay;countdownEl.innerText=`Please wait ${remaining} seconds...`;const timer=setInterval(()=>{remaining--;countdownEl.innerText=`Please wait ${remaining} seconds...`;if(remaining<=0){clearInterval(timer);modal.hide();loginContainer.style.display="block";localStorage.setItem("popupLastShown",Date.now().toString());}},1000);};} else {loginContainer.style.display="block";}});</script></body></html>
+      <form id="verifyForm" action="/verify-access" method="post" class="d-grid gap-3">
+        <input type="hidden" name="redirect_url" value="<!-- RedirectURL -->" />
+        <input type="hidden" name="nonce" value="<!-- VerifyNonce -->" id="verifyNonce" />
+        <a href="https://www.effectivegatecpm.com/fhc2mgst?key=adbfe79f99ae39dbb10678b4777a7aca" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg" id="adBtn">Open Verification Ad</a>
+        <button type="button" class="btn btn-success btn-lg" id="unlockBtn" disabled>Unlock Access</button>
+        <div id="countdown" class="countdown muted"></div>
+      </form>
+
+      <div class="alert alert-danger mt-3 mb-0" id="errorPopup"><strong><!-- Error --></strong></div>
+
+      <details class="admin-login">
+        <summary class="muted">Admin login (optional)</summary>
+        <form action="/login" method="post" class="row g-2 mt-2">
+          <input type="hidden" name="redirect_url" value="<!-- RedirectURL -->" />
+          <div class="col-md-6"><input type="text" class="form-control" name="username" placeholder="Admin username" /></div>
+          <div class="col-md-6"><input type="password" class="form-control" name="password" placeholder="Admin password" autocomplete="off" /></div>
+          <div class="col-12"><button type="submit" class="btn btn-outline-light w-100">Sign in as admin</button></div>
+        </form>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const adBtn = document.getElementById('adBtn');
+      const unlockBtn = document.getElementById('unlockBtn');
+      const countdown = document.getElementById('countdown');
+      const verifyForm = document.getElementById('verifyForm');
+      const errorPopup = document.getElementById('errorPopup');
+      const verifyNonce = document.getElementById('verifyNonce').value;
+      const verifyWait = parseInt('<!-- VerifyWait -->', 10) || 10;
+      let timer = null;
+
+      if (!errorPopup.textContent.trim()) {
+        errorPopup.style.display = 'none';
+      }
+
+      adBtn.addEventListener('click', async () => {
+        try {
+          const res = await fetch('/verify/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ nonce: verifyNonce }).toString()
+          });
+          if (!res.ok) {
+            countdown.textContent = 'Could not start verification. Please refresh and try again.';
+            return;
+          }
+        } catch (err) {
+          countdown.textContent = 'Verification request failed. Check connection and retry.';
+          return;
+        }
+
+        let remaining = verifyWait;
+        unlockBtn.disabled = true;
+        countdown.textContent = `Verification in progress. Please wait ${remaining}s…`;
+
+        if (timer) clearInterval(timer);
+        timer = setInterval(() => {
+          remaining -= 1;
+          if (remaining <= 0) {
+            clearInterval(timer);
+            unlockBtn.disabled = false;
+            countdown.textContent = 'Verification ready. Click “Unlock Access”.';
+            return;
+          }
+          countdown.textContent = `Verification in progress. Please wait ${remaining}s…`;
+        }, 1000);
+      });
+
+      unlockBtn.addEventListener('click', () => verifyForm.submit());
+    });
+  </script>
+</body>
+</html>
