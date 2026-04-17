@@ -14,6 +14,8 @@ class BotDatabase:
     """Async MongoDB helper for bot runtime data."""
 
     def __init__(self) -> None:
+        if not Telegram.MONGO_URI:
+            raise ValueError("MONGO_URI/DATABASE_URL is required")
         self.client = AsyncIOMotorClient(Telegram.MONGO_URI)
         self.db = self.client["surftg_bot"]
         self.users = self.db["users"]
@@ -99,7 +101,11 @@ class BotDatabase:
         filters: dict[str, Any] = {}
         if words:
             regex_parts = [f"(?=.*{re.escape(word)})" for word in words]
-            filters["title"] = {"$regex": "".join(regex_parts), "$options": "i"}
+            pattern = "".join(regex_parts)
+            filters["$or"] = [
+                {"title": {"$regex": pattern, "$options": "i"}},
+                {"tags": {"$regex": pattern, "$options": "i"}},
+            ]
 
         total = await self.content.count_documents(filters)
         cursor = (

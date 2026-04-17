@@ -31,6 +31,7 @@ class Telegram:
 
     BASE_URL = getenv("BASE_URL", "").rstrip("/")
     MONGO_URI = getenv("MONGO_URI") or getenv("DATABASE_URL", "")
+    DATABASE_URL = MONGO_URI  # backward compatibility for existing modules
 
     AUTH_CHANNEL = _csv_list("AUTH_CHANNEL")
     FORCE_SUB_CHANNELS = _csv_list("FORCE_SUB_CHANNELS") or AUTH_CHANNEL
@@ -39,6 +40,8 @@ class Telegram:
         "https://placehold.co/1280x720/png?text=Welcome+to+Movie+Bot",
     )
     ADMIN_IDS = _int_list("ADMIN_IDS")
+
+    REQUIRED_BOT_USERNAME = "stream4u_bot"
 
     THEME = getenv("THEME", "vapor").lower()
     USERNAME = getenv("USERNAME", "admin")

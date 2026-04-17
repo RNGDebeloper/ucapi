@@ -324,6 +324,8 @@ Existing values like `AUTH_CHANNEL` remain supported for indexing and fallback f
 - `/users` (admin) → user count + preview
 - `/broadcast` (admin, reply required) → mass broadcast with progress
 
+> Security restriction: bot startup is locked to **@Stream4u_bot**. If token/username does not match, the process exits.
+
 ### Deployment (VPS / Render / Koyeb)
 
 1. Set env vars above and existing Telegram API variables (`API_ID`, `API_HASH`, `BOT_TOKEN`).
