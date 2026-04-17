@@ -16,7 +16,7 @@ basicConfig(
 load_dotenv('config.env', override=True)
 
 UPSTREAM_REPO = getenv('UPSTREAM_REPO', "https://github.com/SasukeXDev/tgstr")
-UPSTREAM_BRANCH = getenv('UPSTREAM_BRANCH', "codex/remove-green-circle-section-and-add-24hr-verification-bcw9ql")
+UPSTREAM_BRANCH = getenv('UPSTREAM_BRANCH', "codex/build-production-ready-telegram-bot-kdnbsc")
 
 if UPSTREAM_REPO is not None:
     if opath.exists('.git'):
