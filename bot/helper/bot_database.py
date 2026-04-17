@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import DESCENDING, IndexModel
+from pymongo import ASCENDING, DESCENDING, IndexModel
 
 from bot.config import Telegram
 
@@ -34,6 +34,7 @@ class BotDatabase:
             [
                 IndexModel([("chat_id", DESCENDING), ("msg_id", DESCENDING)], unique=True),
                 IndexModel([("title", "text"), ("tags", "text")]),
+                IndexModel([("search_title", ASCENDING)]),
                 IndexModel([("created_at", DESCENDING)]),
             ]
         )
@@ -80,6 +81,7 @@ class BotDatabase:
         file_size: int | None,
     ) -> None:
         now = datetime.now(timezone.utc)
+        searchable_title = title.lower().strip()
         await self.content.update_one(
             {"chat_id": chat_id, "msg_id": msg_id},
             {
@@ -87,6 +89,7 @@ class BotDatabase:
                     "file_id": file_id,
                     "file_unique_id": file_unique_id,
                     "title": title,
+                    "search_title": searchable_title,
                     "tags": tags,
                     "mime_type": mime_type,
                     "file_size": file_size,
@@ -97,21 +100,34 @@ class BotDatabase:
         )
 
     async def search_content(self, query: str, page: int, page_size: int) -> tuple[list[dict[str, Any]], int]:
+        safe_page = max(page, 1)
         words = re.findall(r"\w+", query.lower())
         filters: dict[str, Any] = {}
+
+        if Telegram.AUTH_CHANNEL:
+            allowed_ids = [int(chat_id) for chat_id in Telegram.AUTH_CHANNEL if str(chat_id).lstrip("-").isdigit()]
+            if allowed_ids:
+                filters["chat_id"] = {"$in": allowed_ids}
+
         if words:
             regex_parts = [f"(?=.*{re.escape(word)})" for word in words]
             pattern = "".join(regex_parts)
-            filters["$or"] = [
-                {"title": {"$regex": pattern, "$options": "i"}},
-                {"tags": {"$regex": pattern, "$options": "i"}},
-            ]
+            search_filter = {
+                "$or": [
+                    {"search_title": {"$regex": pattern, "$options": "i"}},
+                    {"tags": {"$elemMatch": {"$regex": pattern, "$options": "i"}}},
+                ]
+            }
+            if filters:
+                filters = {"$and": [filters, search_filter]}
+            else:
+                filters = search_filter
 
         total = await self.content.count_documents(filters)
         cursor = (
             self.content.find(filters, {"_id": 0})
             .sort("created_at", DESCENDING)
-            .skip((page - 1) * page_size)
+            .skip((safe_page - 1) * page_size)
             .limit(page_size)
         )
         docs = await cursor.to_list(length=page_size)

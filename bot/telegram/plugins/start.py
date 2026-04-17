@@ -32,11 +32,11 @@ async def safe_error_reply(target: Message | CallbackQuery, err: Exception) -> N
         LOGGER.exception("Unable to send fallback error message")
 
 
-def is_admin(_, __, message: Message) -> bool:
-    return bool(message.from_user and message.from_user.id in Telegram.ADMIN_IDS)
-
-
-admin_filter = filters.create(is_admin)
+async def ensure_admin(message: Message) -> bool:
+    if not message.from_user or message.from_user.id in Telegram.ADMIN_IDS:
+        return True
+    await message.reply_text("❌ Admin only command.")
+    return False
 
 
 @StreamBot.on_message(filters.private & filters.command("start"))
@@ -144,10 +144,15 @@ async def search_text_handler(client: Client, message: Message) -> None:
 
 
 @StreamBot.on_callback_query(filters.regex(r"^sp:"))
-async def search_page_handler(_, query: CallbackQuery) -> None:
+async def search_page_handler(client: Client, query: CallbackQuery) -> None:
     try:
-        if not query.message:
+        if not query.message or not query.from_user:
             return
+        if not await is_user_subscribed(client, query.from_user.id):
+            await query.answer("Join required channels first.", show_alert=True)
+            await send_force_sub_prompt(query.message)
+            return
+
         _, query_id, page_raw = query.data.split(":")
         page_data = await build_search_page(query_id, int(page_raw))
         if not page_data:
@@ -245,9 +250,11 @@ async def index_history(client: Client, message: Message) -> None:
         await safe_error_reply(message, err)
 
 
-@StreamBot.on_message(filters.private & filters.command("stats") & admin_filter)
+@StreamBot.on_message(filters.private & filters.command("stats"))
 async def stats_handler(_, message: Message) -> None:
     try:
+        if not await ensure_admin(message):
+            return
         stats = await bot_db.get_stats()
         await message.reply_text(
             "📊 <b>Bot Statistics</b>\n\n"
@@ -261,9 +268,11 @@ async def stats_handler(_, message: Message) -> None:
         await safe_error_reply(message, err)
 
 
-@StreamBot.on_message(filters.private & filters.command("users") & admin_filter)
+@StreamBot.on_message(filters.private & filters.command("users"))
 async def users_handler(_, message: Message) -> None:
     try:
+        if not await ensure_admin(message):
+            return
         users = await bot_db.list_user_ids()
         preview = ", ".join(map(str, users[:20])) if users else "No users"
         await message.reply_text(f"👥 Total users: <b>{len(users)}</b>\n<code>{preview}</code>")
@@ -271,9 +280,11 @@ async def users_handler(_, message: Message) -> None:
         await safe_error_reply(message, err)
 
 
-@StreamBot.on_message(filters.private & filters.command("broadcast") & admin_filter)
+@StreamBot.on_message(filters.private & filters.command("broadcast"))
 async def broadcast_handler(_, message: Message) -> None:
     try:
+        if not await ensure_admin(message):
+            return
         if not message.from_user:
             return
         if not message.reply_to_message:
@@ -312,13 +323,6 @@ async def broadcast_handler(_, message: Message) -> None:
         await progress.edit_text(f"✅ Broadcast completed.\nSent: {sent}\nFailed: {failed}")
     except Exception as err:
         await safe_error_reply(message, err)
-
-
-@StreamBot.on_message(filters.private & filters.command(["stats", "users", "broadcast"]))
-async def admin_guard_handler(_, message: Message) -> None:
-    if message.from_user and message.from_user.id not in Telegram.ADMIN_IDS:
-        await message.reply_text("❌ Admin only command.")
-
 
 @StreamBot.on_message(filters.private)
 async def touchpoint_handler(_, message: Message) -> None:

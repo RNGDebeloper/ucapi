@@ -41,7 +41,7 @@ async def is_user_subscribed(client: Client, user_id: int) -> bool:
             member = await tg_retry(client.get_chat_member, channel, user_id)
         except Exception:
             return False
-        if member.status in {ChatMemberStatus.BANNED, ChatMemberStatus.LEFT}:
+        if member.status in {ChatMemberStatus.BANNED, ChatMemberStatus.LEFT, ChatMemberStatus.RESTRICTED}:
             return False
     return True
 
@@ -52,7 +52,7 @@ async def send_force_sub_prompt(message: Message) -> None:
         extra = "\n\n⚠️ If no join button appears, join required private channels from admin-provided links."
     text = (
         "🔒 <b>Subscription Required</b>\n\n"
-        "Please join all required channels, then tap <b>Try Again</b> to continue."
+        "Please join all required channels, then tap <b>Check / Try Again</b> to continue."
         f"{extra}"
     )
     await message.reply_text(text, reply_markup=force_sub_keyboard(Telegram.FORCE_SUB_CHANNELS))
