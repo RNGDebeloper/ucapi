@@ -6,6 +6,7 @@ from pyrogram import idle
 
 from bot import __version__, LOGGER
 from bot.config import Telegram
+from bot.helper.bot_database import bot_db
 from bot.server import web_server
 from bot.telegram import StreamBot, UserBot
 from bot.telegram.clients import initialize_clients
@@ -14,6 +15,7 @@ loop = get_event_loop()
 
 async def start_services():
     LOGGER.info(f'Initializing Surf-TG v-{__version__}')
+    await bot_db.ensure_indexes()
     await asleep(1.2)
     
     await StreamBot.start()

@@ -275,3 +275,65 @@ will. Specifically you can redistribute and/or modify it under the terms of the
 [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.en.html) as
 published by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version. Also keep in mind that all the forks of this repository MUST BE OPEN-SOURCE and MUST BE UNDER THE SAME LICENSE.
+
+---
+
+## Telegram Bot (Production Workflow)
+
+This repository now includes a production-ready **Pyrogram + MongoDB** bot workflow with:
+
+- Force subscription flow (`/start` + join check + retry button + pending content delivery)
+- Movie/series keyword search with pagination and inline result buttons
+- Admin commands: `/stats`, `/users`, `/broadcast`
+- Mongo persistence for users, content index, global metrics, and broadcast logs
+- Channel auto-indexing for new files and `/index` command for history indexing
+
+### Folder Structure (Telegram Features)
+
+```text
+bot/
+├── config.py
+├── helper/
+│   ├── bot_database.py
+│   └── retry.py
+└── telegram/
+    ├── keyboards.py
+    ├── services.py
+    └── plugins/
+        └── start.py
+```
+
+### Required Environment Variables
+
+```env
+BOT_TOKEN=
+MONGO_URI=                   # fallback: DATABASE_URL
+FORCE_SUB_CHANNELS=@channelA,@channelB
+START_IMAGE_URL=https://...
+ADMIN_IDS=123456789,987654321
+```
+
+Existing values like `AUTH_CHANNEL` remain supported for indexing and fallback force-sub channels.
+
+### Commands
+
+- `/start [payload]` → force-sub check + welcome photo + optional content delivery
+- `/search <keyword>` or plain text in private chat → content search
+- `/index` (in indexed channel) → import channel history
+- `/stats` (admin) → users + request metrics
+- `/users` (admin) → user count + preview
+- `/broadcast` (admin, reply required) → mass broadcast with progress
+
+### Deployment (VPS / Render / Koyeb)
+
+1. Set env vars above and existing Telegram API variables (`API_ID`, `API_HASH`, `BOT_TOKEN`).
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run:
+   ```bash
+   python -m bot
+   ```
+4. Ensure MongoDB is reachable and bot is admin in required channels.
+
