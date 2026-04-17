@@ -5,21 +5,26 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 def _channel_button(channel: str) -> InlineKeyboardButton | None:
     if channel.startswith("https://t.me/"):
-        label = channel.rsplit("/", 1)[-1]
-        return InlineKeyboardButton(f"📢 Join {label}", url=channel)
+        return InlineKeyboardButton("📢 Join Channel", url=channel)
     if channel.startswith("@"):
         label = channel[1:]
-        return InlineKeyboardButton(f"📢 Join {label}", url=f"https://t.me/{label}")
+        return InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{label}")
     return None
 
 
 def force_sub_keyboard(channels: list[str]) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
-    for channel in channels:
+    for idx, channel in enumerate(channels, start=1):
         btn = _channel_button(channel)
-        if btn:
-            rows.append([btn])
-    rows.append([InlineKeyboardButton("✅ Try Again", callback_data="fs:try_again")])
+        if not btn:
+            continue
+
+        if len(channels) > 1:
+            rows.append([InlineKeyboardButton(f"📢 Join Channel {idx}", url=btn.url)])
+            continue
+
+        rows.append([btn])
+    rows.append([InlineKeyboardButton("✅ Check / Try Again", callback_data="fs:try_again")])
     return InlineKeyboardMarkup(rows)
 
 
