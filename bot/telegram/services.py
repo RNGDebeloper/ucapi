@@ -23,6 +23,7 @@ class SearchState:
 
 
 SEARCH_CACHE: dict[str, SearchState] = {}
+FORCE_SUB_LINK_CACHE: dict[str, tuple[str, datetime]] = {}
 
 
 def _prune_cache() -> None:
@@ -30,6 +31,60 @@ def _prune_cache() -> None:
     expired = [k for k, v in SEARCH_CACHE.items() if v.expires_at < now]
     for key in expired:
         SEARCH_CACHE.pop(key, None)
+
+
+def _prune_force_sub_links() -> None:
+    now = datetime.now(timezone.utc)
+    expired = [channel for channel, (_, exp) in FORCE_SUB_LINK_CACHE.items() if exp < now]
+    for channel in expired:
+        FORCE_SUB_LINK_CACHE.pop(channel, None)
+
+
+def _is_direct_join_link(channel: str) -> bool:
+    return channel.startswith("https://t.me/")
+
+
+async def _resolve_channel_join_link(client: Client, channel: str) -> str | None:
+    _prune_force_sub_links()
+    cached = FORCE_SUB_LINK_CACHE.get(channel)
+    if cached:
+        return cached[0]
+
+    if channel.startswith("@"):
+        link = f"https://t.me/{channel[1:]}"
+        FORCE_SUB_LINK_CACHE[channel] = (link, datetime.now(timezone.utc) + timedelta(hours=6))
+        return link
+
+    if _is_direct_join_link(channel):
+        FORCE_SUB_LINK_CACHE[channel] = (channel, datetime.now(timezone.utc) + timedelta(hours=6))
+        return channel
+
+    try:
+        chat = await tg_retry(client.get_chat, channel)
+    except Exception:
+        return None
+
+    if chat.username:
+        link = f"https://t.me/{chat.username}"
+        FORCE_SUB_LINK_CACHE[channel] = (link, datetime.now(timezone.utc) + timedelta(hours=6))
+        return link
+
+    try:
+        invite = await tg_retry(
+            client.create_chat_invite_link,
+            chat.id,
+            name="Force Subscription",
+            creates_join_request=False,
+        )
+        FORCE_SUB_LINK_CACHE[channel] = (invite.invite_link, datetime.now(timezone.utc) + timedelta(hours=1))
+        return invite.invite_link
+    except Exception:
+        try:
+            link = await tg_retry(client.export_chat_invite_link, chat.id)
+            FORCE_SUB_LINK_CACHE[channel] = (link, datetime.now(timezone.utc) + timedelta(hours=1))
+            return link
+        except Exception:
+            return None
 
 
 async def is_user_subscribed(client: Client, user_id: int) -> bool:
@@ -41,21 +96,27 @@ async def is_user_subscribed(client: Client, user_id: int) -> bool:
             member = await tg_retry(client.get_chat_member, channel, user_id)
         except Exception:
             return False
-        if member.status in {ChatMemberStatus.BANNED, ChatMemberStatus.LEFT}:
+        if member.status in {ChatMemberStatus.BANNED, ChatMemberStatus.LEFT, ChatMemberStatus.RESTRICTED}:
             return False
     return True
 
 
-async def send_force_sub_prompt(message: Message) -> None:
+async def send_force_sub_prompt(client: Client, message: Message) -> None:
+    join_links: list[str] = []
+    for channel in Telegram.FORCE_SUB_CHANNELS:
+        resolved = await _resolve_channel_join_link(client, channel)
+        if resolved:
+            join_links.append(resolved)
+
     extra = ""
-    if any(channel.startswith("-100") for channel in Telegram.FORCE_SUB_CHANNELS):
-        extra = "\n\n⚠️ If no join button appears, join required private channels from admin-provided links."
+    if not join_links:
+        extra = "\n\n⚠️ Unable to generate a channel link. Please contact admin."
     text = (
         "🔒 <b>Subscription Required</b>\n\n"
-        "Please join all required channels, then tap <b>Try Again</b> to continue."
+        "Please join all required channels, then tap <b>Check / Try Again</b> to continue."
         f"{extra}"
     )
-    await message.reply_text(text, reply_markup=force_sub_keyboard(Telegram.FORCE_SUB_CHANNELS))
+    await message.reply_text(text, reply_markup=force_sub_keyboard(join_links))
 
 
 def _parse_file_payload(payload: str) -> tuple[int, int] | None:
