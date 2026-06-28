@@ -113,3 +113,50 @@ class MetadataRepository(MongoRepository):
 
     def __init__(self, collection_name: str = "media_metadata", logical_db: str = "media") -> None:
         super().__init__(collection_name, logical_db=logical_db)
+
+
+class MediaMetadataRepository(MongoRepository):
+    """Repository for the Media Intelligence Engine cache."""
+
+    def __init__(self) -> None:
+        super().__init__("media_metadata", logical_db="media")
+        self.collection.create_index("telegram_file_unique_id")
+        self.collection.create_index("status")
+        self.collection.create_index("last_scanned")
+
+    def save_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Upsert a complete metadata document."""
+        media_id = str(metadata.get("_id"))
+        self.collection.replace_one({"_id": media_id}, {**metadata, "_id": media_id}, upsert=True)
+        return {**metadata, "_id": media_id}
+
+    def get_metadata(self, media_id: str) -> Optional[Dict[str, Any]]:
+        """Return cached metadata for a message id, if present."""
+        return self.collection.find_one({"_id": str(media_id)})
+
+    def delete_metadata(self, media_id: str) -> bool:
+        """Delete cached metadata so a manual rescan can rebuild it."""
+        return self.collection.delete_one({"_id": str(media_id)}).deleted_count > 0
+
+    def update_metadata(self, media_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Patch selected metadata fields and return the updated document."""
+        self.collection.update_one({"_id": str(media_id)}, {"$set": updates}, upsert=True)
+        return self.get_metadata(media_id)
+
+    def mark_scanned(self, media_id: str) -> None:
+        """Mark a metadata document as successfully scanned."""
+        from datetime import datetime, timezone
+        self.collection.update_one({"_id": str(media_id)}, {"$set": {"status": "scanned", "last_scanned": datetime.now(timezone.utc)}, "$unset": {"error": ""}}, upsert=True)
+
+    def mark_failed(self, media_id: str, error: str) -> None:
+        """Persist a scanner failure without crashing callers."""
+        from datetime import datetime, timezone
+        self.collection.update_one({"_id": str(media_id)}, {"$set": {"status": "failed", "error": error, "last_scanned": datetime.now(timezone.utc)}}, upsert=True)
+
+    def count_since(self, iso_date: str, status: str) -> int:
+        """Count scanner documents for a UTC date and status."""
+        from datetime import datetime, time, timezone
+        day = datetime.fromisoformat(iso_date).date()
+        start = datetime.combine(day, time.min, tzinfo=timezone.utc)
+        end = datetime.combine(day, time.max, tzinfo=timezone.utc)
+        return self.collection.count_documents({"status": status, "last_scanned": {"$gte": start, "$lte": end}})
