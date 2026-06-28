@@ -12,7 +12,12 @@ class Telegram:
     PORT = int(getenv("PORT", 8080))
     SESSION_STRING = getenv("SESSION_STRING", "")
     BASE_URL = getenv("BASE_URL", "").rstrip('/')
-    DATABASE_URL = getenv("DATABASE_URL", "")
+    DATABASE_URL = getenv("DATABASE_URL", getenv("DATABASE_URI", ""))
+    USER_DB_URI = getenv("USER_DB_URI", DATABASE_URL)
+    MEDIA_DB_URI = getenv("MEDIA_DB_URI", DATABASE_URL)
+    ANALYTICS_DB_URI = getenv("ANALYTICS_DB_URI", DATABASE_URL)
+    SOCIAL_DB_URI = getenv("SOCIAL_DB_URI", DATABASE_URL)
+    CACHE_DB_URI = getenv("CACHE_DB_URI", DATABASE_URL)
     AUTH_CHANNEL = [channel.strip() for channel in getenv("AUTH_CHANNEL", "").split(",") if channel.strip()]
     THEME = getenv("THEME", "vapor").lower()
     USERNAME = getenv("USERNAME", "admin")
