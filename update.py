@@ -16,7 +16,7 @@ basicConfig(
 load_dotenv('config.env', override=True)
 
 UPSTREAM_REPO = getenv('UPSTREAM_REPO', "https://github.com/SasukeXDev/tgstr")
-UPSTREAM_BRANCH = getenv('UPSTREAM_BRANCH', "main")
+UPSTREAM_BRANCH = getenv('UPSTREAM_BRANCH', "codex/build-media-intelligence-engine-for-tgstr-v2")
 
 if UPSTREAM_REPO is not None:
     if opath.exists('.git'):
