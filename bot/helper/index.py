@@ -59,21 +59,38 @@ async def get_files(chat_id, page=1):
     return posts
 
 
-
 def _public_chat_id(chat_id):
     return str(chat_id).replace("-100", "")
 
 
+def _stream_url(chat_id, file_id, file_hash):
+    return f"/{_public_chat_id(chat_id)}/stream?id={file_id}&hash={file_hash}"
+
+
+def _watch_url(chat_id, file_id, file_hash):
+    return f"/watch/{_public_chat_id(chat_id)}?id={file_id}&hash={file_hash}"
+
+
 async def posts_file(posts, chat_id):
-    public_chat_id = _public_chat_id(chat_id)
-    items = []
-    for post in posts:
-        message_id = post["msg_id"]
-        secure_hash = post["hash"]
-        items.append({
-            **post,
-            "public_chat_id": public_chat_id,
-            "watch_url": f"/watch/{public_chat_id}?id={message_id}&hash={secure_hash}",
-            "download_url": f"/{public_chat_id}/{message_id}?id={message_id}&hash={secure_hash}",
-        })
-    return items
+    return [
+        {
+            "id": post["msg_id"],
+            "msg_id": post["msg_id"],
+            "file_id": post["msg_id"],
+            "chat_id": chat_id,
+            "public_chat_id": _public_chat_id(chat_id),
+            "title": post["title"],
+            "size": post.get("size"),
+            "file_size": post.get("size"),
+            "mime_type": post.get("type"),
+            "file_type": post.get("type"),
+            "thumbnail": post.get("poster_url"),
+            "poster_url": post.get("poster_url"),
+            "hash": post.get("hash"),
+            "parent_folder": post.get("parent_folder"),
+            "type": "file",
+            "stream_url": _stream_url(chat_id, post["msg_id"], post.get("hash")),
+            "watch_url": _watch_url(chat_id, post["msg_id"], post.get("hash")),
+        }
+        for post in posts
+    ]
