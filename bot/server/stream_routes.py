@@ -5,7 +5,7 @@ import mimetypes
 import secrets
 from aiohttp import web
 from aiohttp.http_exceptions import BadStatusLine
-from bot.helper.chats import get_chats
+from bot.helper.chats import get_chats, post_playlist, posts_chat, posts_db_file
 from bot.helper.database import Database
 from bot.helper.search import search
 from bot.helper.thumbnail import get_image
@@ -13,11 +13,10 @@ from bot.telegram import work_loads, multi_clients
 from aiohttp_session import get_session
 from bot.config import Telegram
 from bot.helper.exceptions import FIleNotFound, InvalidHash
-from bot.helper.index import get_files
+from bot.helper.index import get_files, posts_file
 from bot.server.custom_dl import ByteStreamer
+from bot.server.render_template import render_page
 from bot.helper.cache import rm_cache
-from bot.helper.file_size import get_readable_file_size
-from bot.server.file_properties import get_file_ids
 
 from bot.telegram import StreamBot
 
@@ -27,47 +26,11 @@ routes = web.RouteTableDef()
 db = Database()
 
 
-def _is_admin(username):
-    return username == Telegram.ADMIN_USERNAME
-
-
-def _auth_payload(request):
-    return {
-        "authenticated": False,
-        "login_url": "/login",
-        "redirect_url": request.path_qs,
-    }
-
-
-def _serialize_document(document):
-    data = {}
-    for key, value in document.items():
-        data["id" if key == "_id" else key] = str(value) if key == "_id" else value
-    return data
-
-
-def _with_watch_urls(posts, chat_id, id_key="msg_id"):
-    enriched = []
-    for post in posts:
-        item = _serialize_document(post)
-        item_chat_id = chat_id or item.get("chat_id")
-        public_chat_id = str(item_chat_id).replace("-100", "")
-        message_id = item.get(id_key) or item.get("file_id")
-        secure_hash = item.get("hash")
-        item["watch_url"] = f"/watch/{public_chat_id}?id={message_id}&hash={secure_hash}"
-        item["download_url"] = f"/{public_chat_id}/{message_id}?id={message_id}&hash={secure_hash}"
-        enriched.append(item)
-    return enriched
-
-
 @routes.get('/login')
 async def login_form(request):
     session = await get_session(request)
     redirect_url = session.get('redirect_url', '/')
-    return web.json_response({
-        "authenticated": "user" in session,
-        "redirect_url": redirect_url,
-    })
+    return web.Response(text=await render_page(None, None, route='login', redirect_url=redirect_url), content_type='text/html')
 
 
 @routes.post('/login')
@@ -85,14 +48,10 @@ async def login_route(request):
             session['redirect_url'] = '/'
         redirect_url = session['redirect_url']
         del session['redirect_url']
-        return web.json_response({
-            "authenticated": True,
-            "redirect_url": redirect_url,
-            "is_admin": _is_admin(username),
-        })
+        return web.HTTPFound(redirect_url)
     else:
         error_message = "Invalid username or password"
-    return web.json_response({"authenticated": False, "error": error_message}, status=401)
+    return web.Response(text=await render_page(None, None, route='login', msg=error_message), content_type='text/html')
 
 
 @routes.post('/logout')
@@ -254,18 +213,18 @@ async def home_route(request):
         try:
             channels = await get_chats()
             playlists = await db.get_Dbfolder()
+            is_admin = username == Telegram.ADMIN_USERNAME
             return web.json_response({
-                "route": "home",
-                "is_admin": _is_admin(username),
-                "channels": channels,
-                "playlists": [_serialize_document(playlist) for playlist in playlists],
+                'channels': await posts_chat(channels),
+                'playlists': await post_playlist(playlists),
+                'is_admin': is_admin,
             })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
         session['redirect_url'] = request.path_qs
-        return web.json_response(_auth_payload(request), status=401)
+        return web.HTTPFound('/login')
 
 
 @routes.get('/playlist')
@@ -278,21 +237,20 @@ async def playlist_route(request):
             playlists = await db.get_Dbfolder(parent_id, page=page)
             files = await db.get_dbFiles(parent_id, page=page)
             text = await db.get_info(parent_id)
+            is_admin = username == Telegram.ADMIN_USERNAME
             return web.json_response({
-                "route": "playlist",
-                "is_admin": _is_admin(username),
-                "parent_id": parent_id,
-                "page": int(page),
-                "title": text,
-                "playlists": [_serialize_document(playlist) for playlist in playlists],
-                "files": _with_watch_urls(files, None, id_key="file_id"),
+                'parent_id': parent_id,
+                'message': text,
+                'playlists': await post_playlist(playlists),
+                'files': await posts_db_file(files),
+                'is_admin': is_admin,
             })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
         session['redirect_url'] = request.path_qs
-        return web.json_response(_auth_payload(request), status=401)
+        return web.HTTPFound('/login')
 
 
 @routes.get('/search/db/{parent}')
@@ -302,25 +260,24 @@ async def dbsearch_route(request):
         parent = request.match_info['parent']
         page = request.query.get('page', '1')
         query = request.query.get('q')
+        is_admin = username == Telegram.ADMIN_USERNAME
         try:
             files = await db.search_dbfiles(id=parent, page=page, query=query)
             name = await db.get_info(parent)
             text = f"{name} - {query}"
             return web.json_response({
-                "route": "dbsearch",
-                "is_admin": _is_admin(username),
-                "parent_id": parent,
-                "page": int(page),
-                "query": query,
-                "title": text,
-                "files": _with_watch_urls(files, None, id_key="file_id"),
+                'parent_id': parent,
+                'query': query,
+                'message': text,
+                'files': await posts_db_file(files),
+                'is_admin': is_admin,
             })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
         session['redirect_url'] = request.path_qs
-        return web.json_response(_auth_payload(request), status=401)
+        return web.HTTPFound('/login')
 
 
 @routes.get('/channel/{chat_id}')
@@ -330,26 +287,23 @@ async def channel_route(request):
         chat_id = request.match_info['chat_id']
         chat_id = f"-100{chat_id}"
         page = request.query.get('page', '1')
+        is_admin = username == Telegram.ADMIN_USERNAME
         try:
             posts = await get_files(chat_id, page=page)
             chat = await StreamBot.get_chat(int(chat_id))
             return web.json_response({
-                "route": "channel",
-                "is_admin": _is_admin(username),
-                "chat": {
-                    "id": chat_id,
-                    "public_id": chat_id.replace("-100", ""),
-                    "title": chat.title,
-                },
-                "page": int(page),
-                "posts": _with_watch_urls(posts, chat_id),
+                'chat_id': chat_id,
+                'public_chat_id': chat_id.replace("-100", ""),
+                'title': chat.title,
+                'files': await posts_file(posts, chat_id),
+                'is_admin': is_admin,
             })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
         session['redirect_url'] = request.path_qs
-        return web.json_response(_auth_payload(request), status=401)
+        return web.HTTPFound('/login')
 
 
 @routes.get('/search/{chat_id}')
@@ -360,29 +314,25 @@ async def search_route(request):
         chat_id = f"-100{chat_id}"
         page = request.query.get('page', '1')
         query = request.query.get('q')
+        is_admin = username == Telegram.ADMIN_USERNAME
         try:
             posts = await search(chat_id, page=page, query=query)
             chat = await StreamBot.get_chat(int(chat_id))
             text = f"{chat.title} - {query}"
             return web.json_response({
-                "route": "search",
-                "is_admin": _is_admin(username),
-                "chat": {
-                    "id": chat_id,
-                    "public_id": chat_id.replace("-100", ""),
-                    "title": chat.title,
-                },
-                "page": int(page),
-                "query": query,
-                "title": text,
-                "posts": _with_watch_urls(posts, chat_id),
+                'chat_id': chat_id,
+                'public_chat_id': chat_id.replace("-100", ""),
+                'query': query,
+                'message': text,
+                'files': await posts_file(posts, chat_id),
+                'is_admin': is_admin,
             })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
         session['redirect_url'] = request.path_qs
-        return web.json_response(_auth_payload(request), status=401)
+        return web.HTTPFound('/login')
 
 
 @routes.get('/api/thumb/{chat_id}', allow_head=True)
@@ -406,47 +356,7 @@ async def stream_handler_watch(request: web.Request):
             chat_id = f"-100{chat_id}"
             message_id = request.query.get('id')
             secure_hash = request.query.get('hash')
-            file_data = await get_file_ids(
-                StreamBot, chat_id=int(chat_id), message_id=int(message_id)
-            )
-            if file_data.unique_id[:6] != secure_hash:
-                logging.info("Link hash: %s - %s", secure_hash, file_data.unique_id[:6])
-                logging.info("Invalid hash for message with - ID %s", message_id)
-                raise InvalidHash
-
-            filename = file_data.file_name or "Proper Filename is Missing"
-            mime_type = file_data.mime_type or "application/octet-stream"
-            tag = mime_type.split("/")[0].strip() if "/" in mime_type else "file"
-            stream_url = (
-                f"/{chat_id.replace('-100', '')}/{message_id}"
-                f"?id={message_id}&hash={secure_hash}"
-            )
-            payload = {
-                "route": "watch",
-                "is_admin": _is_admin(username),
-                "chat_id": chat_id,
-                "message_id": int(message_id),
-                "hash": secure_hash,
-                "file": {
-                    "name": filename,
-                    "mime_type": mime_type,
-                    "tag": tag,
-                    "size": file_data.file_size,
-                    "readable_size": get_readable_file_size(file_data.file_size),
-                    "stream_url": stream_url,
-                    "download_url": stream_url,
-                    "thumbnail_url": f"/api/thumb/{chat_id}?id={message_id}",
-                },
-            }
-            if tag == "video":
-                message = await StreamBot.get_messages(chat_id, int(message_id))
-                video = getattr(message, "video", None)
-                duration_sec = getattr(video, "duration", None)
-                payload["video"] = {
-                    "caption": message.caption or getattr(video, "file_name", "") or "",
-                    "duration": int(duration_sec) if duration_sec else None,
-                }
-            return web.json_response(payload)
+            return web.Response(text=await render_page(message_id, secure_hash, chat_id=chat_id), content_type='text/html')
         except InvalidHash as e:
             raise web.HTTPForbidden(text=e.message) from e
         except FIleNotFound as e:
@@ -459,7 +369,7 @@ async def stream_handler_watch(request: web.Request):
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
         session['redirect_url'] = request.path_qs
-        return web.json_response(_auth_payload(request), status=401)
+        return web.HTTPFound('/login')
 
 
 @routes.get('/{chat_id}/{encoded_name}', allow_head=True)
