@@ -26,46 +26,73 @@ routes = web.RouteTableDef()
 db = Database()
 
 
-@routes.get('/login')
-async def login_form(request):
-    session = await get_session(request)
-    redirect_url = session.get('redirect_url', '/')
-    return web.Response(text=await render_page(None, None, route='login', redirect_url=redirect_url), content_type='text/html')
+def is_admin_user(username):
+    return username == Telegram.ADMIN_USERNAME
+
+
+def login_success_response(username):
+    return web.json_response({
+        "ok": True,
+        "user": username,
+        "is_admin": is_admin_user(username),
+    })
+
+
+def unauthorized_response():
+    return web.json_response({"ok": False, "error": "Authentication required"}, status=401)
+
+
+def forbidden_response():
+    return web.json_response({"ok": False, "error": "Admin access required"}, status=403)
+
+
+def admin_required_response(username):
+    if username is None:
+        return unauthorized_response()
+    if not is_admin_user(username):
+        return forbidden_response()
+    return None
+
+
+async def get_request_data(request):
+    if request.content_type == 'application/json':
+        try:
+            return await request.json()
+        except json.JSONDecodeError:
+            return {}
+    return await request.post()
 
 
 @routes.post('/login')
 async def login_route(request):
     session = await get_session(request)
-    if 'user' in session:
-        return web.HTTPFound('/')
-    data = await request.post()
+    if username := session.get('user'):
+        return login_success_response(username)
+
+    data = await get_request_data(request)
     username = data.get('username')
     password = data.get('password')
-    error_message = None
     if (username == Telegram.USERNAME and password == Telegram.PASSWORD) or (username == Telegram.ADMIN_USERNAME and password == Telegram.ADMIN_PASSWORD):
         session['user'] = username
-        if 'redirect_url' not in session:
-            session['redirect_url'] = '/'
-        redirect_url = session['redirect_url']
-        del session['redirect_url']
-        return web.HTTPFound(redirect_url)
-    else:
-        error_message = "Invalid username or password"
-    return web.Response(text=await render_page(None, None, route='login', msg=error_message), content_type='text/html')
+        session.pop('redirect_url', None)
+        return login_success_response(username)
+
+    return web.json_response({"ok": False, "error": "Invalid username or password"}, status=401)
 
 
 @routes.post('/logout')
 async def logout_route(request):
     session = await get_session(request)
     session.pop('user', None)
-    return web.HTTPFound('/login')
+    session.pop('redirect_url', None)
+    return web.json_response({"ok": True})
 
 
 @routes.post('/create')
 async def create_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
     data = await request.post()
     folderName = data.get('folderName')
     thumbnail = data.get('thumbnail')
@@ -81,8 +108,8 @@ async def create_route(request):
 @routes.post('/delete')
 async def delete_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
     data = await request.json()
     id = data.get('delete_id')
     parent = data.get('parent')
@@ -97,8 +124,8 @@ async def delete_route(request):
 @routes.post('/edit')
 async def editFolder_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
     data = await request.post()
     folderName = data.get('folderName')
     thumbnail = data.get('thumbnail')
@@ -116,8 +143,8 @@ async def editFolder_route(request):
 @routes.post('/edit_post')
 async def editPost_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
     data = await request.post()
     fileName = data.get('fileName')
     thumbnail = data.get('filethumbnail')
@@ -135,8 +162,8 @@ async def editPost_route(request):
 @routes.get('/searchDbFol')
 async def searchDbFolder_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
     query = request.query.get('query', '')
     folder_names = await db.search_DbFolder(query)
     return web.json_response(folder_names)
@@ -179,8 +206,8 @@ async def send_route(request):
 @routes.get('/reload')
 async def reload_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
 
     chat_id = request.query.get('chatId', '')
     if chat_id == 'home':
@@ -194,8 +221,8 @@ async def reload_route(request):
 @routes.post('/config')
 async def editConfig_route(request):
     session = await get_session(request)
-    if (username := session.get('user')) != Telegram.ADMIN_USERNAME:
-        return web.json_response({'msg': 'Who the hell you are'})
+    if response := admin_required_response(session.get('user')):
+        return response
     data = await request.post()
     channel = data.get('channel')
     theme = data.get('theme')
@@ -221,8 +248,7 @@ async def home_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return unauthorized_response()
 
 
 @routes.get('/playlist')
@@ -243,8 +269,7 @@ async def playlist_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return unauthorized_response()
 
 
 @routes.get('/search/db/{parent}')
@@ -265,8 +290,7 @@ async def dbsearch_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return unauthorized_response()
 
 
 @routes.get('/channel/{chat_id}')
@@ -286,8 +310,7 @@ async def channel_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return unauthorized_response()
 
 
 @routes.get('/search/{chat_id}')
@@ -309,8 +332,7 @@ async def search_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return unauthorized_response()
 
 
 @routes.get('/api/thumb/{chat_id}', allow_head=True)
@@ -346,8 +368,7 @@ async def stream_handler_watch(request: web.Request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return unauthorized_response()
 
 
 @routes.get('/{chat_id}/{encoded_name}', allow_head=True)
