@@ -1,277 +1,450 @@
-<div align="center">
-    <img src="https://cdn.jsdelivr.net/gh/weebzone/weebzone/data/Surf-TG/src/logo.png" alt="Surf_TG" style="height:20%; width:50%;"><br>
-    <i>Python Web App which Indexes a Your Telegram Channel and Serves its Files for Download and Stream.</i>
-</div>
+# Surf-TG Backend API
 
+Surf-TG is now documented as a **backend-only service** for Telegram-backed file indexing and delivery. It runs a Python/aiohttp server plus Telegram bot clients that can:
 
-<div align="center" >
+- index files from configured Telegram channels;
+- browse indexed Telegram channels and database playlist folders;
+- search channel files and playlist files;
+- manage playlist folders and file metadata as an admin;
+- serve thumbnails;
+- render watch pages; and
+- stream or download Telegram files with HTTP byte-range support.
 
-[![](https://img.shields.io/github/repo-size/weebzone/Surf-TG?color=green&label=Repo%20Size&labelColor=292c3b)](#) [![](https://img.shields.io/github/commit-activity/m/weebzone/Surf-TG?logo=github&labelColor=292c3b&label=Github%20Commits)](#) [![](https://img.shields.io/github/license/weebzone/Surf-TG?style=flat&label=License&labelColor=292c3b)](#)|[![](https://img.shields.io/github/issues-raw/weebzone/Surf-TG?style=flat&label=Open%20Issues&labelColor=292c3b)](#) [![](https://img.shields.io/github/issues-closed-raw/weebzone/Surf-TG?style=flat&label=Closed%20Issues&labelColor=292c3b)](#) [![](https://img.shields.io/github/issues-pr-raw/weebzone/Surf-TG?style=flat&label=Open%20Pull%20Requests&labelColor=292c3b)](#) [![](https://img.shields.io/github/issues-pr-closed-raw/weebzone/Surf-TG?style=flat&label=Closed%20Pull%20Requests&labelColor=292c3b)](#)
-:---:|:---:|
-[![](https://img.shields.io/github/languages/count/weebzone/Surf-TG?style=flat&label=Total%20Languages&labelColor=292c3b&color=blueviolet)](#) [![](https://img.shields.io/github/languages/top/weebzone/Surf-TG?style=flat&logo=python&labelColor=292c3b)](#) [![](https://img.shields.io/github/last-commit/weebzone/Surf-TG?style=flat&label=Last%20Commit&labelColor=292c3b&color=important)](#) [![](https://badgen.net/github/branches/weebzone/Surf-TG?label=Total%20Branches&labelColor=292c3b)](#)|[![](https://img.shields.io/github/forks/weebzone/Surf-TG?style=flat&logo=github&label=Forks&labelColor=292c3b&color=critical)](#) [![](https://img.shields.io/github/stars/weebzone/Surf-TG?style=flat&logo=github&label=Stars&labelColor=292c3b&color=yellow)](#) |
+The repository no longer assumes that the bundled HTML pages are the product frontend. Treat the server as an authenticated backend/API surface that a separate web, mobile, or desktop frontend can call.
 
-</div>
+## Environment variables
 
+Surf-TG reads environment variables directly and also loads a local `config.env` file when present. For local development, create `config.env` in the project root and set the variables you need.
 
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `API_ID` | Yes | `0` | Telegram `api_id` from <https://my.telegram.org/apps>. |
+| `API_HASH` | Yes | empty | Telegram `api_hash` from <https://my.telegram.org/apps>. |
+| `BOT_TOKEN` | Yes | empty | Telegram bot token from BotFather. The bot must be able to access indexed channels. |
+| `AUTH_CHANNEL` | Yes | empty | Comma-separated Telegram channel IDs used as source indexes, for example `-1001234567890,-1009876543210`. |
+| `DATABASE_URL` | Yes | empty | MongoDB connection string used for playlist folders/files and runtime configuration. |
+| `BASE_URL` | Yes | empty | Public base URL for the deployed service, without a trailing slash. |
+| `PORT` | No | `8080` | TCP port used by the aiohttp server. |
+| `SESSION_STRING` | No | empty | Optional Pyrogram user session string. When set, the user client is started alongside the bot client. |
+| `USERNAME` | No | `admin` | Standard authenticated username for browsing/searching/watching. |
+| `PASSWORD` | No | `admin` | Password for `USERNAME`. Change this in every deployment. |
+| `ADMIN_USERNAME` | No | `surfTG` | Admin username. Required for playlist/config mutation routes. Make it different from `USERNAME`. |
+| `ADMIN_PASSWORD` | No | `surfTG` | Password for `ADMIN_USERNAME`. Change this in every deployment. |
+| `THEME` | No | `vapor` | Theme name used by server-rendered HTML responses. Mostly relevant only if you use the included HTML pages. |
+| `SLEEP_THRESHOLD` | No | `60` | Pyrogram flood-wait sleep threshold. |
+| `WORKERS` | No | `10` | Maximum concurrent worker count for incoming Telegram updates. |
+| `MULTI_CLIENT` | No | `False` | Enables worker bot clients when truthy in the app logic. |
+| `MULTI_TOKEN1`, `MULTI_TOKEN2`, ... | No | unset | Optional additional bot tokens for multi-client streaming/indexing. Add each worker bot to `AUTH_CHANNEL`. |
+| `HIDE_CHANNEL` | No | `False` | Hides channel cards in the included server-rendered HTML. |
 
-## ***Features*** 📑
+## Local, Docker, and Heroku deployment
 
-- Multi Channel Index 📡
-- Thumbnail Support (Channel Profile) 🖼️
-- Search Support 🔍
-- Login support 🔐
-- Faster Resumeable Download Link ⏩
-- Stream Video Support 📺
-- 25 Website Themes (Bootswatch) 🎨
-- Playlist Creator Support 📀
-- Database Support 💾
-- Cache System 🔄
-
-### ***To-Do*** 📦
-
-- [ ] API Support 🛠️
-- [ ] Admin Pannel Support 👑
-
-## ***Website Screenshots*** 🌐
-
-
-<div style="overflow-x: auto; white-space: nowrap;">
-  <img src="https://graph.org/file/67c1500ecd0b9eb3a5700.png" style="width: 400px; display: inline-block; margin-right: 10px;" />
-  <img src="https://graph.org/file/be9d123ccc341d43431ef.png" style="width: 400px; display: inline-block; margin-right: 10px;" />
-  <img src="https://graph.org/file/29fd699758d8ce2da9aff.png" style="width: 400px; display: inline-block; margin-right: 10px;" />
-  <img src="https://graph.org/file/5ace6162fd95c1f9432fa.png" style="width: 400px; display: inline-block; margin-right: 10px;" />
-</div>
-
-
-## ***Environment Variables*** 🪧
-
-To run this Surf-TG, you will need to add the following environment variables to your config.env file.
-
-> [!NOTE]
-> First, rename the `sample_config.env` to `config.env`.
-
-| Variable Name | Value
-|------------- | -------------
-| `API_ID` (required) | Telegram api_id obtained from https://my.telegram.org/apps. `int`
-| `API_HASH` (required) | Telegram api_hash obtained from https://my.telegram.org/apps. `str`
-| `BOT_TOKEN` (required) | The Telegram Bot Token that you got from @BotFather `str`
-| `AUTH_CHANNEL` (required) | Chat_ID of the Channel you are using for index (Seperate Multiple Channel By `,` eg- `-100726731829, -10022121832`). `int`
-| `DATABASE_URL` (required) | Your Mongo Database URL (Connection string). Follow this [Guide](https://github.com/weebzone/Surf-TG/tree/main#generate-database-) to generate database. `str`
-| `SESSION_STRING` | Use same account which is a participant of the `AUTH_CHANNEL` Use this [Tool](https://github.com/weebzone/Surf-TG/tree/main#generate-session-string) to generate Session String. `str`
-| `BASE_URL` (required) | Valid BASE URL where the bot is deployed. Format of URL should be `http://myip`, where myip is the IP/Domain(public) of your bot. For `Heroku` use `App Url`. `str`
-| `PORT` | Port on which app should listen to, defaults to `8080`. `int`
-| `USERNAME` | default  username is `admin`. `str`
-| `PASSWORD` | default  password is `admin`. `str`
-| `ADMIN_USERNAME` | Set the admin username so that the admin can log in to [Playlist Creator](https://github.com/weebzone/Surf-TG/tree/main#playlist-creator-). Make it different from `USERNAME`. The default admin username is `surfTG`. `str`
-| `ADMIN_PASSWORD` | Set the admin password so that the admin can log in to [Playlist Creator](https://github.com/weebzone/Surf-TG/tree/main#playlist-creator-). Make it different from `PASSWORD`. The default admin password is `surfTG`. `str`
-| `SLEEP_THRESHOLD` | Set a sleep threshold for flood wait exceptions, defaut is `60`. `int`
-| `WORKERS` | Number of maximum concurrent workers for handling incoming updates, default is `10`. `int`
-| `MULTI_TOKEN*` | Multi bot token for handing incoming updates. (*)asterisk represents any interger starting from 1. `str`
-| `THEME` | Choose any Bootswatch theme for UI, Default is `flatly`. `str`
-| `MULTI_CLIENT` | Set this `True` if using `MULTI_TOKEN`, Default is `False`. `bool`
-| `HIDE_CHANNEL` | Set this `True` to hide the Channel Card in Public Web, Default is `False`. `bool`
-
-## ***Themes*** 🎨
-
-* There are 25 Themes from [bootswatch](https://github.com/thomaspark/bootswatch) official [Bootstrap](https://getbootstrap.com) Themes.
-* You can check Theme from [bootswatch.com](https://bootswatch.com) before selecting.
-* To Change theme, Set Appropriate Theme name in `Theme` Variable.
-
-| **Themes**|         |         |         |        |          |
-|:---------:|:-------:|:-------:|:-------:|:------:|:--------:|
-| cerulean  | cosmo   | cyborg  | darkly  | flatly | journal  |
-| litera    | lumen   | lux     | materia | minty  | pulse    |
-| sandstone | simplex | sketchy | slate   | solar  | spacelab |
-| superhero | united  | yeti    | vapor   | morph  | quartz   |    
-| zephyr    |
-
-### ***Multiple Bots*** 🚀 (Speed Booster)
-
-> [!NOTE]
-> **What it multi-client feature and what it does?** <br><br>
-> This feature shares the Telegram API requests between worker bots to speed up download speed when many users are using the server and to avoid the flood limits that are set by Telegram. <br>
-
-> [!NOTE]
-> You can add up to 50 bots since 50 is the max amount of bot admins you can set in a Telegram Channel.
-
-To enable multi-client, generate new bot tokens and add it as your `config.env` with the following key names. 
-
-`MULTI_TOKEN1`: Add your first bot token here.
-`MULTI_TOKEN2`: Add your second bot token here.
-
-you may also add as many as bots you want. (max limit is 50)
-`MULTI_TOKEN3`, `MULTI_TOKEN4`, etc.
-
-> [!WARNING]
-> Don't forget to add all these worker bots to the `AUTH_CHANNEL` for the proper functioning
-
-
-### ***Generate Database*** 💾
-
-> [!NOTE]
-> **Why Database is Required** <br><br>
-> In Playlist Creator, the folder and file data are stored. As of now, the session string is not required in Surf-TG, so to store these files, the database is necessary. <br>
-
-
-1. Go to `https://mongodb.com/` and sign-up.
-2. Create Shared Cluster.
-3. Press on `Database` under `Deployment` Header, your created cluster will be there.
-5. Press on connect, choose `Allow Access From Anywhere` and press on `Add IP Address` without editing the ip, then
-   create user.
-6. After creating user press on `Choose a connection`, then press on `Connect your application`. Choose `Driver` 
-   **python** and `version` **3.6 or later**.
-7. Copy your `connection string` and replace `<password>` with the password of your user, then press close.
-
-### Generate Session String 
-
-> [!NOTE]
-> **Make Sure that you have to Generate the `Pyrofork Session String`**
-
-To generate the Session String use this [Colab Tool](https://colab.research.google.com/drive/1F3cRAdgvFSenOoVSxJFxP-356pE4sWOL)
-
-
-### ***Playlist Creator*** 📀
-
-> [!NOTE]
-> **Login With `ADMIN_USERNAME` and `ADMIN_PASSWORD`** <br><br>
-
-- 📁 Create Folder/Subfolder
-- ✏️ Edit the Folder Name
-- 🖼️ Edit the Folder Thumbnail
-- 📥 Directly Store File in folder from `AUTH_CHANNEL`
-- 🔍 Search Support of file in Playlist folder (limited to the folder which is open in the browser)
-- ✏️ Edit Filename of File
-- 🖼️ Edit Thumbnail of File
-
-### Bot Commands
-
-```
-index - store files in Database
-```
-
-## Deployment
-
-<i>Either you could locally host, VPS, or deploy on [Heroku](https://heroku.com)</i>
-
-
-### Deploy Locally:
+### Local development
 
 ```sh
 git clone https://github.com/weebzone/Surf-TG
 cd Surf-TG
-python3 -m venv ./venv
-. ./venv/bin/activate
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt
+cp sample_config.env config.env 2>/dev/null || touch config.env
+# edit config.env with your Telegram, MongoDB, and auth settings
 python3 -m bot
 ```
 
-- To stop the whole server,
- do <kbd>CTRL</kbd>+<kbd>C</kbd>
+The server binds to `0.0.0.0:$PORT` and defaults to port `8080`.
 
-- If you want to run this server 24/7 on the VPS, follow these steps.
-```sh
-sudo apt install tmux -y
-tmux
-python3 -m bot
-```
-- now you can close the VPS and the server will run on it.
+### Docker
 
-
-
-### Deploy using Docker 
-
-* Clone the Repository:
 ```sh
 git clone https://github.com/weebzone/Surf-TG
 cd Surf-TG
-```
-- Start Docker daemon (SKIP if already running, mostly you don't need to do this):
-```sh
-sudo dockerd
-```
-* Build own Docker image:
-```sh
-sudo docker build -t Surf-TG .
+# create config.env or pass environment variables with -e/--env-file
+docker build -t surf-tg .
+docker run --env-file config.env -p 8080:8080 surf-tg
 ```
 
-* Start Container:
-```sh
-sudo docker run -p 8080:8080 Surf-TG
-```
-* To stop the running image:
+You can also use Compose:
 
 ```sh
-sudo docker ps
+docker compose up --build
 ```
+
+### Heroku
+
+The repository includes both `Procfile` and `heroku.yml` definitions that run `bash surf-tg.sh`. Configure all required environment variables as Heroku config vars before starting the app.
+
 ```sh
-sudo docker stop id
+heroku create your-surf-tg-app
+heroku stack:set container
+heroku config:set API_ID=... API_HASH=... BOT_TOKEN=... AUTH_CHANNEL=... DATABASE_URL=... BASE_URL=https://your-surf-tg-app.herokuapp.com
+heroku config:set USERNAME=... PASSWORD=... ADMIN_USERNAME=... ADMIN_PASSWORD=...
+git push heroku HEAD:main
 ```
 
-### Deploy on Heroku :
+## Authentication flow
 
-Easily Deploy to Heroku use this [Colab Tool](https://colab.research.google.com/drive/1R5YBUg8TINgxAm4Hvejjy0VgsKGmb8vV)
+Surf-TG uses cookie-backed aiohttp sessions.
 
+1. Unauthenticated users who request protected browse/search/watch routes are redirected to `/login`, and the original path is stored as `redirect_url` in the session.
+2. `POST /login` accepts form fields `username` and `password`.
+3. If the submitted credentials match either `USERNAME`/`PASSWORD` or `ADMIN_USERNAME`/`ADMIN_PASSWORD`, the server stores `session['user'] = username` and redirects to the original URL or `/`.
+4. Admin-only routes require `session['user'] == ADMIN_USERNAME` and return `{"msg":"Who the hell you are"}` when called by a non-admin or anonymous session.
+5. `POST /logout` removes `session['user']` and redirects to `/login`.
 
-## FAQ 🤔
+### Auth categories used below
 
+- **Public**: no login session required.
+- **User**: requires either standard or admin login.
+- **Admin**: requires admin login.
 
-#### Question 1: Is a session string required in Surf-TG?
+## API endpoint reference
 
-**Answer:** No, it is not required.
+Most browse routes currently return `text/html` because they were originally rendered for the bundled UI. Mutation helpers generally redirect with `302 Found` after success. JSON responses are explicitly called out where relevant.
 
-#### Question 2: I am using Surf-TG without a session string, but my channel files are not showing on the web.
+### `POST /login`
 
-**Answer:** To initially index your files, use the `/index` command in `AUTH_CHANNEL`. This command stores all your files in the database. Please ensure that you use the `/index` command only in one channel at a time. Once the channel indexing is complete, you can proceed to index the next channel.
+- **Auth**: Public.
+- **Body**: `application/x-www-form-urlencoded` or multipart form.
 
-#### Question 3: Do I need to use the `/index` command every time the bot restarts or is deployed again?
+| Field | Required | Description |
+| --- | --- | --- |
+| `username` | Yes | Either `USERNAME` or `ADMIN_USERNAME`. |
+| `password` | Yes | Matching password. |
 
-**Answer:** No, whether you restart the bot or deploy it again, you don't need to perform initial indexing unless you change the database.
+- **Success**: `302 Found` redirect to the stored `redirect_url` or `/`; sets a session cookie.
+- **Failure**: `200 OK text/html` login page containing an invalid credentials message.
 
-#### Question 4: Do I have to use the `/index` command every time I upload a file to the channel to index it?
+Example request:
 
-**Answer:** No, the `/index` command is only used once initially. Subsequently, any files you send will automatically be stored in the database.
+```sh
+curl -i -c cookies.txt -X POST http://localhost:8080/login \
+  -d 'username=admin' \
+  -d 'password=admin'
+```
 
-#### Question 5: When will be the cache system work?
-**Answer:** It work only when you use the `Session String.`
+### `POST /logout`
 
-#### Question 6: How are posts updated on the web when using Session String?
+- **Auth**: Public, but only affects the current session.
+- **Body**: none.
+- **Success**: `302 Found` redirect to `/login`; removes the logged-in session user.
 
-**Answer:** Login with `ADMIN_USERNAME` and `ADMIN_PASSWORD`, then clicking the reload option in the Homepage navbar clears all channel caches, to showing new posts. To clear a specific channel's cache, open the channel and click its reload option.
+Example response:
 
-#### Question 7: How to change theme and add/remove Channel without restart?
+```http
+HTTP/1.1 302 Found
+Location: /login
+```
 
-**Answer:** Login with `ADMIN_USERNAME` and `ADMIN_PASSWORD`, then clicking the Edit option in the Homepage navbar from there you can change theme and add/remove channel. Make sure that channel must be seperated by `,`
+### `GET /`
 
-#### Question 8: Can anyone create or edit folders/files in Playlist Creator?
+- **Auth**: User.
+- **Query parameters**: none.
+- **Success**: `200 OK text/html` home page containing channel cards and root playlist folders. Admin sessions receive admin controls in the rendered page.
+- **Unauthenticated**: `302 Found` redirect to `/login`.
 
-**Answer:** No, only admins with `ADMIN_USERNAME` and `ADMIN_PASSWORD` can log in to Playlist Creator.
+### `GET /playlist?db={folder_id}&page={page}`
 
-#### Question 9: If i delete the mongoDb database then my playlist also deleted?
+- **Auth**: User.
+- **Query parameters**:
 
-**Answer:** Yes, Your all the playlist will be deleted.
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `db` | Yes | none | Database playlist folder ID to open. |
+| `page` | No | `1` | Pagination page. |
 
-#### Question 10: If i delete the file from `AUTH_CHANNEL` still then it will be played in Surf-TG?
+- **Success**: `200 OK text/html` playlist page containing child folders and files for `folder_id`.
+- **Unauthenticated**: `302 Found` redirect to `/login`.
 
-**Answer:** No, Once the file is deleted it will be no more playable.
+### `GET /search/db/{parent}?q={query}&page={page}`
 
-## Contributing
+- **Auth**: User.
+- **Path parameters**:
 
-Feel free to contribute to this project if you have any further ideas
+| Parameter | Description |
+| --- | --- |
+| `parent` | Playlist folder ID to search within. |
 
-## Credits
+- **Query parameters**:
 
-- [@TechShreyash](https://github.com/TechShreyash) for [TechZIndex](https://github.com/TechShreyash/TechZIndex) Base repo
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `q` | Yes | none | Search query. |
+| `page` | No | `1` | Pagination page. |
 
-## **Contact Info**
+- **Success**: `200 OK text/html` playlist search results for the parent folder.
 
-[![Telegram Username](https://img.shields.io/static/v1?label=&message=Telegram%20&color=blueviolet&style=for-the-badge&logo=telegram&logoColor=black)](https://t.me/krn_adhikari)
+### `GET /channel/{chat_id}?page={page}`
 
-## **Copyright** ©️ 
+- **Auth**: User.
+- **Path parameters**:
 
-Copyright (C) 2024-present [Weebzone](https://github.com/weebzone) under [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.en.html).
+| Parameter | Description |
+| --- | --- |
+| `chat_id` | Telegram channel ID without the `-100` prefix. The server adds `-100` internally. |
 
-Surf-TG is Free Software: You can use, study share and improve it at your
-will. Specifically you can redistribute and/or modify it under the terms of the
-[GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.en.html) as
-published by the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version. Also keep in mind that all the forks of this repository MUST BE OPEN-SOURCE and MUST BE UNDER THE SAME LICENSE.
+- **Query parameters**:
+
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `page` | No | `1` | Pagination page. |
+
+- **Success**: `200 OK text/html` channel file listing.
+
+### `GET /search/{chat_id}?q={query}&page={page}`
+
+- **Auth**: User.
+- **Path parameters**:
+
+| Parameter | Description |
+| --- | --- |
+| `chat_id` | Telegram channel ID without the `-100` prefix. |
+
+- **Query parameters**:
+
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `q` | Yes | none | Search query. |
+| `page` | No | `1` | Pagination page. |
+
+- **Success**: `200 OK text/html` channel search results.
+
+### `GET /api/thumb/{chat_id}?id={message_id}`
+
+- **Auth**: Public.
+- **Path parameters**:
+
+| Parameter | Description |
+| --- | --- |
+| `chat_id` | Telegram chat/channel ID as expected by thumbnail lookup. |
+
+- **Query parameters**:
+
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `id` | No | none | Telegram message ID. If omitted, the route returns the chat/channel image when available. |
+
+- **Success**: `200 OK image/jpeg` file response.
+
+Example response headers:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: image/jpeg
+```
+
+### `GET /watch/{chat_id}?id={message_id}&hash={hash}`
+
+- **Auth**: User.
+- **Path parameters**:
+
+| Parameter | Description |
+| --- | --- |
+| `chat_id` | Telegram channel ID without the `-100` prefix. |
+
+- **Query parameters**:
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `id` | Yes | Telegram message ID for the file. |
+| `hash` | Yes | First six characters of the Telegram file unique ID. Used as a lightweight access/integrity check by the stream route. |
+
+- **Success**: `200 OK text/html` watch page that embeds or links to the streaming/download URL.
+- **Errors**: `403 Forbidden` for invalid hash, `404 Not Found` for missing Telegram file, `302 Found` to `/login` if unauthenticated.
+
+### `GET /{chat_id}/{encoded_name}?id={message_id}&hash={hash}`
+
+- **Auth**: Public.
+- **Purpose**: Streams or downloads the Telegram file.
+- **Path parameters**:
+
+| Parameter | Description |
+| --- | --- |
+| `chat_id` | Telegram channel ID without the `-100` prefix. |
+| `encoded_name` | Filename slug used in the URL. The handler does not currently use it to locate the file. |
+
+- **Query parameters**:
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `id` | Yes | Telegram message ID for the file. |
+| `hash` | Yes | First six characters of the Telegram file unique ID. |
+
+- **Request headers**:
+
+| Header | Required | Description |
+| --- | --- | --- |
+| `Range` | No | Byte range such as `bytes=0-1048575`. |
+
+- **Success**: `200 OK` for full responses when no `Range` header is sent, or `206 Partial Content` when `Range` is present.
+- **Response headers**: `Content-Type`, `Content-Range`, `Content-Length`, `Content-Disposition: attachment; filename="..."`, and `Accept-Ranges: bytes`.
+- **Errors**: `403 Forbidden` for invalid hash, `404 Not Found` for missing Telegram file, `416 Range Not Satisfiable` for invalid byte ranges.
+
+Example partial response:
+
+```http
+HTTP/1.1 206 Partial Content
+Content-Type: video/mp4
+Content-Range: bytes 0-1048575/734003200
+Content-Length: 1048576
+Content-Disposition: attachment; filename="movie.mp4"
+Accept-Ranges: bytes
+```
+
+### `POST /create`
+
+- **Auth**: Admin.
+- **Body**: form data.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `folderName` | Yes | New folder name. |
+| `thumbnail` | No | Thumbnail URL/path stored with the folder. |
+| `parent_dir` | Yes | Parent folder reference. Values containing `db=` are normalized to the ID after `db=`; otherwise the parent becomes `root`. |
+
+- **Success**: `302 Found` redirect to `/` for root folders or `/playlist?db={parent}` for nested folders.
+- **Non-admin**: JSON `{"msg":"Who the hell you are"}`.
+
+### `POST /delete`
+
+- **Auth**: Admin.
+- **Body**: JSON.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `delete_id` | Yes | Folder/file database ID to delete. |
+| `parent` | Yes | Parent folder ID or `root`. |
+
+- **Success**: `302 Found` redirect to the parent listing.
+- **Failure**: `500 Internal Server Error` if database deletion fails.
+
+### `POST /edit`
+
+- **Auth**: Admin.
+- **Body**: form data.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `folder_id` | Yes | Folder database ID to edit. |
+| `folderName` | Yes | Replacement folder name. |
+| `thumbnail` | No | Replacement thumbnail. |
+| `parent` | Yes | Parent folder ID or `root`. |
+
+- **Success**: `302 Found` redirect to the parent listing.
+- **Failure**: `500 Internal Server Error` if update fails.
+
+### `POST /edit_post`
+
+- **Auth**: Admin.
+- **Body**: form data.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `file_id` | Yes | File database ID to edit. |
+| `fileName` | Yes | Replacement file name. |
+| `filethumbnail` | No | Replacement thumbnail. |
+| `file_folder_id` | Yes | Parent folder ID or `root`. |
+
+- **Success**: `302 Found` redirect to the parent listing.
+- **Failure**: `500 Internal Server Error` if update fails.
+
+### `GET /searchDbFol?query={query}`
+
+- **Auth**: Admin.
+- **Query parameters**:
+
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `query` | No | empty string | Folder search text. |
+
+- **Success**: `200 OK application/json` array/object returned by the database folder search helper.
+- **Non-admin**: JSON `{"msg":"Who the hell you are"}`.
+
+Example response shape:
+
+```json
+[
+  {"id": "folder-id", "name": "Movies"}
+]
+```
+
+The exact object fields depend on the database helper implementation.
+
+### `POST /send`
+
+- **Auth**: Public in the current route implementation. Frontends should treat this as sensitive and expose it only to trusted/admin users until server-side authorization is added.
+- **Body**: form data.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `chatId` | Yes | Telegram channel ID without `-100`; the route prepends `-100`. |
+| `folderId` | Yes | Destination playlist folder ID or `root`. |
+| `selectedIds` | Yes | Comma-separated entries. Each entry must be `file_id|hash|filename|size|file_type|thumbnail`. |
+
+- **Success**: adds formatted file records to the database and redirects to `/` or `/playlist?db={folderId}`.
+- **Validation failure**: returns an error object from the handler if required form data is missing.
+
+Example `selectedIds` value:
+
+```text
+123|abcdef|movie.mp4|734003200|video|https://example.com/thumb.jpg
+```
+
+### `GET /reload?chatId={chat_id}`
+
+- **Auth**: Admin.
+- **Query parameters**:
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `chatId` | Yes | Use `home` to clear global cache and redirect home, or a channel ID without `-100` to clear that channel cache. |
+
+- **Success**: `302 Found` redirect to `/` when `chatId=home`, otherwise `/channel/{chat_id}`.
+- **Non-admin**: JSON `{"msg":"Who the hell you are"}`.
+
+### `POST /config`
+
+- **Auth**: Admin.
+- **Body**: form data.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `channel` | No | Replacement configured auth channel value stored in the database config. |
+| `theme` | No | Replacement theme value stored in the database config. |
+
+- **Success**: `302 Found` redirect to `/`.
+- **Failure**: `500 Internal Server Error` if config update fails.
+
+## Streaming and download behavior
+
+The download endpoint is `GET /{chat_id}/{encoded_name}?id={message_id}&hash={hash}`. The route uses the Telegram `chat_id`, `message_id`, and `hash` to load file metadata through `ByteStreamer`, validate the file hash, and stream bytes from Telegram to the HTTP client.
+
+Important behavior for frontend/client implementers:
+
+- `chat_id` values in URLs omit the `-100` prefix. The server prepends it internally.
+- `hash` must equal the first six characters of the Telegram file's `unique_id`; otherwise the response is `403 Forbidden`.
+- `encoded_name` is used for readable URLs but is not used to fetch the file.
+- The server sends `Content-Disposition: attachment`, so browsers normally download the file. A separate frontend can still place the URL in media elements if the browser accepts the MIME type and headers.
+- The response includes `Accept-Ranges: bytes`.
+- Sending a `Range` request such as `Range: bytes=1048576-2097151` returns `206 Partial Content` with the requested byte window.
+- Invalid ranges return `416 Range Not Satisfiable` with `Content-Range: bytes */{file_size}`.
+- Without a `Range` header, the route returns status `200 OK` and streams the whole file while still including `Content-Range` and `Content-Length`.
+
+Example range request:
+
+```sh
+curl -L -b cookies.txt \
+  -H 'Range: bytes=0-1048575' \
+  'http://localhost:8080/1234567890/movie.mp4?id=42&hash=abcdef' \
+  -o movie.part
+```
+
+## Notes for building a separate frontend
+
+- Use the backend as a session-cookie service. Log in with `POST /login`, store the returned cookie, and include it on User/Admin routes.
+- Public media and thumbnail URLs can be fetched without a login session in the current implementation, but watch/list/search pages require login.
+- Several endpoints return server-rendered HTML rather than JSON. If your frontend needs pure JSON APIs, add new routes instead of scraping HTML from these compatibility routes.
+- Keep admin credentials and admin-only mutations away from untrusted clients. In particular, `POST /send` currently has no session check in the route handler and should be protected by your frontend/API gateway or fixed server-side before public exposure.
+- Normalize channel IDs consistently: route URLs generally use the numeric channel ID without `-100`, while database records and Telegram client calls usually use `-100...`.
+- Expect redirects (`302 Found`) from login/logout and mutation routes. API clients may need to disable automatic redirects when they want to inspect success/failure programmatically.
+- For video players and resumable downloaders, prefer the direct `/{chat_id}/{encoded_name}` URL with `Range` requests and handle `206`, `416`, `403`, and `404` explicitly.
