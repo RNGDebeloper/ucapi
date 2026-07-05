@@ -58,28 +58,22 @@ async def get_files(chat_id, page=1):
     save_cache(chat_id, {"posts": posts}, page)
     return posts
 
-async def posts_file(posts, chat_id):
-    phtml = """
-    
-            <div class="col">
-                
-                    <div class="card text-white bg-primary mb-3">
-                        <input type="checkbox" class="admin-only form-check-input position-absolute top-0 end-0 m-2"
-                            onchange="checkSendButton()" id="selectCheckbox"
-                            data-id="{id}|{hash}|{title}|{size}|{type}|{img}">
-                        <img src="https://cdn.jsdelivr.net/gh/weebzone/weebzone/data/Surf-TG/src/loading.gif" class="lzy_img card-img-top rounded-top"
-                            data-src="{img}" alt="{title}"
-                            onerror="this.onerror=null;this.src='https://cdn-icons-png.flaticon.com/512/565/565547.png';">
-                        <a href="/watch/{chat_id}?id={id}&hash={hash}">
-                        <div class="card-body p-1">
-                            <h6 class="card-title">{title}</h6>
-                            <span class="badge bg-warning">{type}</span>
-                            <span class="badge bg-info">{size}</span>
-                        </div>
-                        </a>
-                    </div>
-                
-            </div>
-"""
 
-    return ''.join(phtml.format(chat_id=str(chat_id).replace("-100", ""), id=post["msg_id"], img=post["poster_url"], title=post["title"], hash=post["hash"], size=post['size'], type=post['type']) for post in posts)
+
+def _public_chat_id(chat_id):
+    return str(chat_id).replace("-100", "")
+
+
+async def posts_file(posts, chat_id):
+    public_chat_id = _public_chat_id(chat_id)
+    items = []
+    for post in posts:
+        message_id = post["msg_id"]
+        secure_hash = post["hash"]
+        items.append({
+            **post,
+            "public_chat_id": public_chat_id,
+            "watch_url": f"/watch/{public_chat_id}?id={message_id}&hash={secure_hash}",
+            "download_url": f"/{public_chat_id}/{message_id}?id={message_id}&hash={secure_hash}",
+        })
+    return items
