@@ -15,7 +15,7 @@ from bot.config import Telegram
 from bot.helper.exceptions import FIleNotFound, InvalidHash
 from bot.helper.index import get_files, posts_file
 from bot.server.custom_dl import ByteStreamer
-from bot.server.render_template import render_page
+# from bot.server.render_template import render_page
 from bot.helper.cache import rm_cache
 
 from bot.telegram import StreamBot
