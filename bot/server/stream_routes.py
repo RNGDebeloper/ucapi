@@ -15,7 +15,7 @@ from bot.config import Telegram
 from bot.helper.exceptions import FIleNotFound, InvalidHash
 from bot.helper.index import get_files, posts_file
 from bot.server.custom_dl import ByteStreamer
-from bot.server.render_template import render_page
+# from bot.server.render_template import render_page
 from bot.helper.cache import rm_cache
 
 from bot.telegram import StreamBot
@@ -213,10 +213,12 @@ async def home_route(request):
         try:
             channels = await get_chats()
             playlists = await db.get_Dbfolder()
-            phtml = await posts_chat(channels)
-            dhtml = await post_playlist(playlists)
             is_admin = username == Telegram.ADMIN_USERNAME
-            return web.Response(text=await render_page(None, None, route='home', html=phtml, playlist=dhtml, is_admin=is_admin), content_type='text/html')
+            return web.json_response({
+                'channels': await posts_chat(channels),
+                'playlists': await post_playlist(playlists),
+                'is_admin': is_admin,
+            })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
@@ -235,10 +237,14 @@ async def playlist_route(request):
             playlists = await db.get_Dbfolder(parent_id, page=page)
             files = await db.get_dbFiles(parent_id, page=page)
             text = await db.get_info(parent_id)
-            dhtml = await post_playlist(playlists)
-            dphtml = await posts_db_file(files)
             is_admin = username == Telegram.ADMIN_USERNAME
-            return web.Response(text=await render_page(parent_id, None, route='playlist', playlist=dhtml, database=dphtml, msg=text, is_admin=is_admin), content_type='text/html')
+            return web.json_response({
+                'parent_id': parent_id,
+                'message': text,
+                'playlists': await post_playlist(playlists),
+                'files': await posts_db_file(files),
+                'is_admin': is_admin,
+            })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
@@ -257,10 +263,15 @@ async def dbsearch_route(request):
         is_admin = username == Telegram.ADMIN_USERNAME
         try:
             files = await db.search_dbfiles(id=parent, page=page, query=query)
-            dphtml = await posts_db_file(files)
             name = await db.get_info(parent)
             text = f"{name} - {query}"
-            return web.Response(text=await render_page(parent, None, route='playlist', database=dphtml, msg=text, is_admin=is_admin), content_type='text/html')
+            return web.json_response({
+                'parent_id': parent,
+                'query': query,
+                'message': text,
+                'files': await posts_db_file(files),
+                'is_admin': is_admin,
+            })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
@@ -279,9 +290,14 @@ async def channel_route(request):
         is_admin = username == Telegram.ADMIN_USERNAME
         try:
             posts = await get_files(chat_id, page=page)
-            phtml = await posts_file(posts, chat_id)
             chat = await StreamBot.get_chat(int(chat_id))
-            return web.Response(text=await render_page(None, None, route='index', html=phtml, msg=chat.title, chat_id=chat_id.replace("-100", ""), is_admin=is_admin), content_type='text/html')
+            return web.json_response({
+                'chat_id': chat_id,
+                'public_chat_id': chat_id.replace("-100", ""),
+                'title': chat.title,
+                'files': await posts_file(posts, chat_id),
+                'is_admin': is_admin,
+            })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
@@ -301,10 +317,16 @@ async def search_route(request):
         is_admin = username == Telegram.ADMIN_USERNAME
         try:
             posts = await search(chat_id, page=page, query=query)
-            phtml = await posts_file(posts, chat_id)
             chat = await StreamBot.get_chat(int(chat_id))
             text = f"{chat.title} - {query}"
-            return web.Response(text=await render_page(None, None, route='index', html=phtml, msg=text, chat_id=chat_id.replace("-100", ""), is_admin=is_admin), content_type='text/html')
+            return web.json_response({
+                'chat_id': chat_id,
+                'public_chat_id': chat_id.replace("-100", ""),
+                'query': query,
+                'message': text,
+                'files': await posts_file(posts, chat_id),
+                'is_admin': is_admin,
+            })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
