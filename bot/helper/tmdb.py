@@ -12,6 +12,7 @@ TMDB_BASE_URL = "https://api.themoviedb.org/3"
 POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500"
 FALLBACK_POSTER = "https://cdn-icons-png.flaticon.com/512/565/565547.png"
 HTTP_TIMEOUT = 6
+EPISODE_CAPTION_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)\s*/\s*(\d+)\s*$")
 
 
 def _request(endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -60,8 +61,28 @@ def fetch_metadata(raw_title: str) -> dict[str, Any]:
     ``tmdb_id`` is ``None`` when no key is configured or no match is found, so
     clients can always rely on the field being present in JSON responses.
     """
+    metadata = {
+        "tmdb_id": None,
+        "tmdb_type": None,
+        "season": None,
+        "episode": None,
+        "poster_url": FALLBACK_POSTER,
+    }
+    episode_caption = EPISODE_CAPTION_PATTERN.fullmatch(raw_title)
+    if episode_caption:
+        tmdb_id, season, episode = (int(value) for value in episode_caption.groups())
+        metadata.update({
+            "tmdb_id": tmdb_id,
+            "tmdb_type": "tv",
+            "season": season,
+            "episode": episode,
+        })
+        details = _request(f"/tv/{tmdb_id}", {})
+        if poster_path := details.get("poster_path"):
+            metadata["poster_url"] = f"{POSTER_BASE_URL}{poster_path}"
+        return metadata
+
     title, year, forced_type = _clean_title(raw_title)
-    metadata = {"tmdb_id": None, "tmdb_type": None, "poster_url": FALLBACK_POSTER}
     if not title or not TMDB_API_KEY:
         return metadata
 
@@ -85,11 +106,12 @@ def fetch_metadata(raw_title: str) -> dict[str, Any]:
         return metadata
     _, media_type, result = best
     poster_path = result.get("poster_path")
-    return {
+    metadata.update({
         "tmdb_id": result.get("id"),
         "tmdb_type": media_type,
         "poster_url": f"{POSTER_BASE_URL}{poster_path}" if poster_path else FALLBACK_POSTER,
-    }
+    })
+    return metadata
 
 
 def fetch_poster(raw_title: str) -> str:

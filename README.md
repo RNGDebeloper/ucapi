@@ -9,7 +9,7 @@ Surf-TG is a **JSON-only backend service** for Telegram-backed file indexing and
 - serve thumbnails;
 - stream or download Telegram files with HTTP byte-range support.
 
-Treat the server as an authenticated backend/API surface that a separate web, mobile, or desktop frontend can call. List and search file objects include `tmdb_id` (or `null` when no match is available), `tmdb_type`, and `poster_url`.
+Treat the server as an authenticated backend/API surface that a separate web, mobile, or desktop frontend can call. List and search file objects include `tmdb_id` (or `null` when no match is available), `tmdb_type`, `season`, `episode`, and `poster_url`. Set a Telegram media caption to `{tmdb_id}/{season}/{episode}` (for example, `262838/2/1`) to identify a TV episode directly; the JSON response returns those values as numeric `tmdb_id`, `season`, and `episode` fields.
 
 ## Environment variables
 

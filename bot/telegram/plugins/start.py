@@ -92,7 +92,9 @@ async def file_receive_handler(bot: Client, message: Message):
             hash = file.file_unique_id[:6]
             size = get_readable_file_size(file.file_size)
             type = file.mime_type
-            metadata = fetch_metadata(title)
+            # A channel caption may explicitly identify a TV episode as
+            # ``{tmdb_id}/{season}/{episode}``; prefer it over the filename.
+            metadata = fetch_metadata(message.caption or title)
             await db.add_tgfiles(
                 str(channel_id), str(msg_id), str(hash), str(title), str(size), str(type), **metadata
             )

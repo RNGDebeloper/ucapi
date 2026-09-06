@@ -75,6 +75,8 @@ async def posts_db_file(posts):
             "thumbnail": post.get("thumbnail"),
             "tmdb_id": post.get("tmdb_id"),
             "tmdb_type": post.get("tmdb_type"),
+            "season": post.get("season"),
+            "episode": post.get("episode"),
             "hash": post.get("hash"),
             "parent_folder": post.get("parent_folder"),
             "type": "file",
