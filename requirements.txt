@@ -8,6 +8,4 @@ tgcrypto==1.2.5
 pymongo
 uvloop==0.19.0
 pyrogram==2.0.106
-tmdbv3api
 requests
-

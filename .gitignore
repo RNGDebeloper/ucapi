@@ -6,4 +6,5 @@ config.env
 *.session-journal
 *.session-shm
 *.session-wal
+/cache/*.json
 /.vscode/
