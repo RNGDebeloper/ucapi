@@ -26,5 +26,6 @@ def get_cache(channel, page):
 
 
 def save_cache(channel, cache, page):
+    os.makedirs("cache", exist_ok=True)
     with open(f"cache/{channel}-{page}.json", "w") as f:
         json.dump(cache, f)

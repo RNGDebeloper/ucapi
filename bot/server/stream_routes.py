@@ -1,10 +1,8 @@
-import json
 import logging
 import math
 import mimetypes
 import secrets
 from aiohttp import web
-from aiohttp.http_exceptions import BadStatusLine
 from bot.helper.chats import get_chats, post_playlist, posts_chat, posts_db_file
 from bot.helper.database import Database
 from bot.helper.search import search
@@ -15,12 +13,9 @@ from bot.config import Telegram
 from bot.helper.exceptions import FIleNotFound, InvalidHash
 from bot.helper.index import get_files, posts_file
 from bot.server.custom_dl import ByteStreamer
-# from bot.server.render_template import render_page
 from bot.helper.cache import rm_cache
 
 from bot.telegram import StreamBot
-
-client_cache = {}
 
 routes = web.RouteTableDef()
 db = Database()
@@ -29,36 +24,30 @@ db = Database()
 @routes.get('/login')
 async def login_form(request):
     session = await get_session(request)
-    redirect_url = session.get('redirect_url', '/')
-    return web.Response(text=await render_page(None, None, route='login', redirect_url=redirect_url), content_type='text/html')
+    return web.json_response({
+        'authenticated': 'user' in session,
+    })
 
 
 @routes.post('/login')
 async def login_route(request):
     session = await get_session(request)
     if 'user' in session:
-        return web.HTTPFound('/')
+        return web.json_response({'authenticated': True, 'is_admin': session['user'] == Telegram.ADMIN_USERNAME})
     data = await request.post()
     username = data.get('username')
     password = data.get('password')
-    error_message = None
     if (username == Telegram.USERNAME and password == Telegram.PASSWORD) or (username == Telegram.ADMIN_USERNAME and password == Telegram.ADMIN_PASSWORD):
         session['user'] = username
-        if 'redirect_url' not in session:
-            session['redirect_url'] = '/'
-        redirect_url = session['redirect_url']
-        del session['redirect_url']
-        return web.HTTPFound(redirect_url)
-    else:
-        error_message = "Invalid username or password"
-    return web.Response(text=await render_page(None, None, route='login', msg=error_message), content_type='text/html')
+        return web.json_response({'authenticated': True, 'is_admin': username == Telegram.ADMIN_USERNAME})
+    return web.json_response({'authenticated': False, 'error': 'Invalid username or password'}, status=401)
 
 
 @routes.post('/logout')
 async def logout_route(request):
     session = await get_session(request)
     session.pop('user', None)
-    return web.HTTPFound('/login')
+    return web.json_response({'authenticated': False})
 
 
 @routes.post('/create')
@@ -72,10 +61,7 @@ async def create_route(request):
     parent_dir = data.get('parent_dir')
     parent_dir = parent_dir.split('db=')[-1] if 'db=' in parent_dir else 'root'
     await db.create_folder(parent_dir, folderName, thumbnail)
-    if parent_dir == 'root':
-        return web.HTTPFound('/')
-    else:
-        return web.HTTPFound(f'/playlist?db={parent_dir}')
+    return web.json_response({'created': True, 'parent_folder': parent_dir})
 
 
 @routes.post('/delete')
@@ -88,10 +74,7 @@ async def delete_route(request):
     parent = data.get('parent')
     if not (success := db.delete(id)):
         return web.HTTPInternalServerError()
-    if parent == 'root':
-        return web.HTTPFound('/')
-    else:
-        return web.HTTPFound(f'/playlist?db={parent}')
+    return web.json_response({'deleted': True, 'parent_folder': parent})
 
 
 @routes.post('/edit')
@@ -107,10 +90,7 @@ async def editFolder_route(request):
     success = await db.edit(id, folderName, thumbnail)
     if not success:
         return web.HTTPInternalServerError()
-    if parent == 'root':
-        return web.HTTPFound('/')
-    else:
-        return web.HTTPFound(f'/playlist?db={parent}')
+    return web.json_response({'updated': True, 'parent_folder': parent})
 
 
 @routes.post('/edit_post')
@@ -126,10 +106,7 @@ async def editPost_route(request):
     success = await db.edit(id, fileName, thumbnail)
     if not success:
         return web.HTTPInternalServerError()
-    if parent == 'root':
-        return web.HTTPFound('/')
-    else:
-        return web.HTTPFound(f'/playlist?db={parent}')
+    return web.json_response({'updated': True, 'parent_folder': parent})
 
 
 @routes.get('/searchDbFol')
@@ -167,13 +144,8 @@ async def send_route(request):
             'type': 'file'
         })
 
-    json_data = json.dumps(formatted_entries)
-    data = json.loads(json_data)
-    await db.add_json(data)
-    if folder_id == 'root':
-        return web.HTTPFound('/')
-    else:
-        return web.HTTPFound(f'/playlist?db={folder_id}')
+    await db.add_json(formatted_entries)
+    return web.json_response({'created': len(formatted_entries), 'parent_folder': folder_id})
 
 
 @routes.get('/reload')
@@ -185,10 +157,10 @@ async def reload_route(request):
     chat_id = request.query.get('chatId', '')
     if chat_id == 'home':
         rm_cache()
-        return web.HTTPFound('/')
+        return web.json_response({'reloaded': 'home'})
     else:
         rm_cache(f"-100{chat_id}")
-        return web.HTTPFound(f'/channel/{chat_id}')
+        return web.json_response({'reloaded': chat_id})
 
 
 @routes.post('/config')
@@ -202,7 +174,7 @@ async def editConfig_route(request):
     success = await db.update_config(theme=theme, auth_channel=channel)
     if not success:
         return web.HTTPInternalServerError()
-    return web.HTTPFound('/')
+    return web.json_response({'updated': True})
 
 
 
@@ -223,8 +195,7 @@ async def home_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return web.json_response({'error': 'Authentication required'}, status=401)
 
 
 @routes.get('/playlist')
@@ -249,8 +220,7 @@ async def playlist_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return web.json_response({'error': 'Authentication required'}, status=401)
 
 
 @routes.get('/search/db/{parent}')
@@ -276,8 +246,7 @@ async def dbsearch_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return web.json_response({'error': 'Authentication required'}, status=401)
 
 
 @routes.get('/channel/{chat_id}')
@@ -302,8 +271,7 @@ async def channel_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return web.json_response({'error': 'Authentication required'}, status=401)
 
 
 @routes.get('/search/{chat_id}')
@@ -331,8 +299,7 @@ async def search_route(request):
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return web.json_response({'error': 'Authentication required'}, status=401)
 
 
 @routes.get('/api/thumb/{chat_id}', allow_head=True)
@@ -356,20 +323,18 @@ async def stream_handler_watch(request: web.Request):
             chat_id = f"-100{chat_id}"
             message_id = request.query.get('id')
             secure_hash = request.query.get('hash')
-            return web.Response(text=await render_page(message_id, secure_hash, chat_id=chat_id), content_type='text/html')
-        except InvalidHash as e:
-            raise web.HTTPForbidden(text=e.message) from e
-        except FIleNotFound as e:
-            db.delete_file(chat_id=chat_id, msg_id=message_id, hash=secure_hash)
-            raise web.HTTPNotFound(text=e.message) from e
-        except (AttributeError, BadStatusLine, ConnectionResetError):
-            pass
+            return web.json_response({
+                'chat_id': chat_id,
+                'public_chat_id': chat_id.removeprefix('-100'),
+                'file_id': message_id,
+                'hash': secure_hash,
+                'stream_url': f"/{chat_id.removeprefix('-100')}/stream?id={message_id}&hash={secure_hash}",
+            })
         except Exception as e:
             logging.critical(e.with_traceback(None))
             raise web.HTTPInternalServerError(text=str(e)) from e
     else:
-        session['redirect_url'] = request.path_qs
-        return web.HTTPFound('/login')
+        return web.json_response({'error': 'Authentication required'}, status=401)
 
 
 @routes.get('/{chat_id}/{encoded_name}', allow_head=True)
@@ -386,8 +351,6 @@ async def stream_handler(request: web.Request):
     except FIleNotFound as e:
         db.delete_file(chat_id=chat_id, msg_id=message_id, hash=secure_hash)
         raise web.HTTPNotFound(text=e.message) from e
-    except (AttributeError, BadStatusLine, ConnectionResetError):
-        pass
     except Exception as e:
         logging.critical(e.with_traceback(None))
         raise web.HTTPInternalServerError(text=str(e))

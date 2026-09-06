@@ -37,8 +37,8 @@ WORKDIR /app
 
 # Install necessary runtime system dependencies:
 # 1. 'bash' for your CMD ["bash", "surf-tg.sh"].
-# 2. 'git' because your deployed application/script needs it at runtime.
-RUN apk add --no-cache bash git
+# 2. no VCS tooling is required at runtime.
+RUN apk add --no-cache bash
 
 # Copy the installed Python dependencies from the 'builder' stage
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages

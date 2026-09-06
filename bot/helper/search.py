@@ -3,7 +3,7 @@ from bot.config import Telegram
 from bot.helper.database import Database
 from bot.telegram import UserBot
 from os.path import splitext
-from bot.helper.tmdb import fetch_poster
+from bot.helper.tmdb import fetch_metadata
 from bot.helper.file_size import get_readable_file_size
 
 db = Database()
@@ -15,10 +15,10 @@ async def search(chat_id, query, page):
         file = post.video or post.document
         if not file:
             continue
-        title = post.caption
+        title = post.caption or file.file_name or file.file_id
         title, _ = splitext(title)
         title = re.sub(r'[.,|_\',]', ' ', title)
-        poster = fetch_poster(title)
-        posts.append({"msg_id": post.id, "title": title, "poster_url": poster,
-                     "hash": file.file_unique_id[:6], "size": get_readable_file_size(file.file_size), "type": file.mime_type})
+        metadata = fetch_metadata(title)
+        posts.append({"msg_id": post.id, "title": title,
+                     "hash": file.file_unique_id[:6], "size": get_readable_file_size(file.file_size), "type": file.mime_type, **metadata})
     return posts

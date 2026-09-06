@@ -5,7 +5,7 @@ from bot.helper.database import Database
 from bot.telegram import StreamBot, UserBot
 from bot.helper.file_size import get_readable_file_size
 from bot.helper.cache import get_cache, save_cache
-from bot.helper.tmdb import fetch_poster
+from bot.helper.tmdb import fetch_metadata
 from asyncio import gather
 
 db = Database()
@@ -29,12 +29,13 @@ async def get_messages(chat_id, first_message_id, last_message_id, batch_size=50
         for message in batch_messages:
             if message:
                 if file := message.video or message.document:
-                    title = message.caption    #file.file_name or message.caption or file.file_id
+                    title = message.caption or file.file_name or file.file_id
                     title, _ = splitext(title)
                     title = re.sub(r'[.,|_\',]', ' ', title)
+                    metadata = fetch_metadata(title)
                     messages.append({"msg_id": message.id, "title": title,
                                      "hash": file.file_unique_id[:6], "size": get_readable_file_size(file.file_size),
-                                     "type": file.mime_type, "chat_id": str(chat_id)})
+                                     "type": file.mime_type, "chat_id": str(chat_id), **metadata})
         current_message_id += batch_size
     return messages
 
@@ -49,12 +50,12 @@ async def get_files(chat_id, page=1):
         file = post.video or post.document
         if not file:
             continue
-        title = post.caption
+        title = post.caption or file.file_name or file.file_id
         title, _ = splitext(title)
         title = re.sub(r'[.,|_\',]', ' ', title)
-        poster = fetch_poster(title)
-        posts.append({"msg_id": post.id, "title": title, "poster_url": poster,
-                    "hash": file.file_unique_id[:6], "size": get_readable_file_size(file.file_size), "type": file.mime_type})
+        metadata = fetch_metadata(title)
+        posts.append({"msg_id": post.id, "title": title,
+                    "hash": file.file_unique_id[:6], "size": get_readable_file_size(file.file_size), "type": file.mime_type, **metadata})
     save_cache(chat_id, {"posts": posts}, page)
     return posts
 
@@ -86,6 +87,8 @@ async def posts_file(posts, chat_id):
             "file_type": post.get("type"),
             "thumbnail": post.get("poster_url"),
             "poster_url": post.get("poster_url"),
+            "tmdb_id": post.get("tmdb_id"),
+            "tmdb_type": post.get("tmdb_type"),
             "hash": post.get("hash"),
             "parent_folder": post.get("parent_folder"),
             "type": "file",

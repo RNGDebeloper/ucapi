@@ -5,6 +5,7 @@ from bot.helper.database import Database
 from bot.helper.file_size import get_readable_file_size
 from bot.helper.index import get_messages
 from bot.helper.media import is_media
+from bot.helper.tmdb import fetch_metadata
 from bot.telegram import StreamBot
 from pyrogram import filters, Client
 from pyrogram.types import Message
@@ -91,7 +92,10 @@ async def file_receive_handler(bot: Client, message: Message):
             hash = file.file_unique_id[:6]
             size = get_readable_file_size(file.file_size)
             type = file.mime_type
-            await db.add_tgfiles(str(channel_id), str(msg_id), str(hash), str(title), str(size), str(type))
+            metadata = fetch_metadata(title)
+            await db.add_tgfiles(
+                str(channel_id), str(msg_id), str(hash), str(title), str(size), str(type), **metadata
+            )
         except FloodWait as e:
             LOGGER.info(f"Sleeping for {str(e.value)}s")
             await sleep(e.value)

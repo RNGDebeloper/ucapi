@@ -1,16 +1,15 @@
 # Surf-TG Backend API
 
-Surf-TG is now documented as a **backend-only service** for Telegram-backed file indexing and delivery. It runs a Python/aiohttp server plus Telegram bot clients that can:
+Surf-TG is a **JSON-only backend service** for Telegram-backed file indexing and delivery. It runs a Python/aiohttp server plus Telegram bot clients that can:
 
 - index files from configured Telegram channels;
 - browse indexed Telegram channels and database playlist folders;
 - search channel files and playlist files;
 - manage playlist folders and file metadata as an admin;
 - serve thumbnails;
-- render watch pages; and
 - stream or download Telegram files with HTTP byte-range support.
 
-The repository no longer assumes that the bundled HTML pages are the product frontend. Treat the server as an authenticated backend/API surface that a separate web, mobile, or desktop frontend can call.
+Treat the server as an authenticated backend/API surface that a separate web, mobile, or desktop frontend can call. List and search file objects include `tmdb_id` (or `null` when no match is available), `tmdb_type`, and `poster_url`.
 
 ## Environment variables
 
@@ -30,12 +29,13 @@ Surf-TG reads environment variables directly and also loads a local `config.env`
 | `PASSWORD` | No | `admin` | Password for `USERNAME`. Change this in every deployment. |
 | `ADMIN_USERNAME` | No | `surfTG` | Admin username. Required for playlist/config mutation routes. Make it different from `USERNAME`. |
 | `ADMIN_PASSWORD` | No | `surfTG` | Password for `ADMIN_USERNAME`. Change this in every deployment. |
-| `THEME` | No | `vapor` | Theme name used by server-rendered HTML responses. Mostly relevant only if you use the included HTML pages. |
+| `THEME` | No | `vapor` | Legacy configuration value retained for compatibility; it is not used by JSON responses. |
 | `SLEEP_THRESHOLD` | No | `60` | Pyrogram flood-wait sleep threshold. |
 | `WORKERS` | No | `10` | Maximum concurrent worker count for incoming Telegram updates. |
 | `MULTI_CLIENT` | No | `False` | Enables worker bot clients when truthy in the app logic. |
 | `MULTI_TOKEN1`, `MULTI_TOKEN2`, ... | No | unset | Optional additional bot tokens for multi-client streaming/indexing. Add each worker bot to `AUTH_CHANNEL`. |
-| `HIDE_CHANNEL` | No | `False` | Hides channel cards in the included server-rendered HTML. |
+| `HIDE_CHANNEL` | No | `False` | Legacy configuration value retained for compatibility. |
+| `TMDB_API_KEY` | No | empty | TMDb API key used to add `tmdb_id`, `tmdb_type`, and `poster_url` to indexed and user-session file results. Without it, `tmdb_id` is `null` and the fallback poster is returned. |
 
 ## Local, Docker, and Heroku deployment
 
@@ -86,11 +86,11 @@ git push heroku HEAD:main
 
 Surf-TG uses cookie-backed aiohttp sessions.
 
-1. Unauthenticated users who request protected browse/search/watch routes are redirected to `/login`, and the original path is stored as `redirect_url` in the session.
+1. Protected browse, search, and watch routes return `401 Unauthorized` JSON until a session is authenticated.
 2. `POST /login` accepts form fields `username` and `password`.
-3. If the submitted credentials match either `USERNAME`/`PASSWORD` or `ADMIN_USERNAME`/`ADMIN_PASSWORD`, the server stores `session['user'] = username` and redirects to the original URL or `/`.
+3. If the submitted credentials match either `USERNAME`/`PASSWORD` or `ADMIN_USERNAME`/`ADMIN_PASSWORD`, the server stores `session['user'] = username` and returns JSON confirming the authentication state.
 4. Admin-only routes require `session['user'] == ADMIN_USERNAME` and return `{"msg":"Who the hell you are"}` when called by a non-admin or anonymous session.
-5. `POST /logout` removes `session['user']` and redirects to `/login`.
+5. `POST /logout` removes `session['user']` and returns JSON confirming the session is unauthenticated.
 
 ### Auth categories used below
 
@@ -100,7 +100,7 @@ Surf-TG uses cookie-backed aiohttp sessions.
 
 ## API endpoint reference
 
-Most browse routes currently return `text/html` because they were originally rendered for the bundled UI. Mutation helpers generally redirect with `302 Found` after success. JSON responses are explicitly called out where relevant.
+All non-streaming endpoints return `application/json`. Protected endpoints return `401` with `{"error": "Authentication required"}` when no authenticated session is present.
 
 ### `POST /login`
 
@@ -112,8 +112,8 @@ Most browse routes currently return `text/html` because they were originally ren
 | `username` | Yes | Either `USERNAME` or `ADMIN_USERNAME`. |
 | `password` | Yes | Matching password. |
 
-- **Success**: `302 Found` redirect to the stored `redirect_url` or `/`; sets a session cookie.
-- **Failure**: `200 OK text/html` login page containing an invalid credentials message.
+- **Success**: `200 OK application/json` with `{"authenticated": true, "is_admin": false}` (or `true` for an admin); sets a session cookie.
+- **Failure**: `401 Unauthorized application/json` with `{"authenticated": false, "error": "Invalid username or password"}`.
 
 Example request:
 
@@ -127,21 +127,16 @@ curl -i -c cookies.txt -X POST http://localhost:8080/login \
 
 - **Auth**: Public, but only affects the current session.
 - **Body**: none.
-- **Success**: `302 Found` redirect to `/login`; removes the logged-in session user.
+- **Success**: `200 OK application/json` with `{"authenticated": false}`; removes the logged-in session user.
 
-Example response:
-
-```http
-HTTP/1.1 302 Found
-Location: /login
-```
+Example response: `{"authenticated": false}`.
 
 ### `GET /`
 
 - **Auth**: User.
 - **Query parameters**: none.
-- **Success**: `200 OK text/html` home page containing channel cards and root playlist folders. Admin sessions receive admin controls in the rendered page.
-- **Unauthenticated**: `302 Found` redirect to `/login`.
+- **Success**: `200 OK application/json` containing channel cards and root playlist folders. Admin sessions receive `is_admin: true`.
+- **Unauthenticated**: `401 Unauthorized application/json`.
 
 ### `GET /playlist?db={folder_id}&page={page}`
 
@@ -153,8 +148,8 @@ Location: /login
 | `db` | Yes | none | Database playlist folder ID to open. |
 | `page` | No | `1` | Pagination page. |
 
-- **Success**: `200 OK text/html` playlist page containing child folders and files for `folder_id`.
-- **Unauthenticated**: `302 Found` redirect to `/login`.
+- **Success**: `200 OK application/json` containing child folders and files for `folder_id`.
+- **Unauthenticated**: `401 Unauthorized application/json`.
 
 ### `GET /search/db/{parent}?q={query}&page={page}`
 
@@ -172,7 +167,7 @@ Location: /login
 | `q` | Yes | none | Search query. |
 | `page` | No | `1` | Pagination page. |
 
-- **Success**: `200 OK text/html` playlist search results for the parent folder.
+- **Success**: `200 OK application/json` playlist search results for the parent folder.
 
 ### `GET /channel/{chat_id}?page={page}`
 
@@ -189,7 +184,7 @@ Location: /login
 | --- | --- | --- | --- |
 | `page` | No | `1` | Pagination page. |
 
-- **Success**: `200 OK text/html` channel file listing.
+- **Success**: `200 OK application/json` channel file listing.
 
 ### `GET /search/{chat_id}?q={query}&page={page}`
 
@@ -207,7 +202,7 @@ Location: /login
 | `q` | Yes | none | Search query. |
 | `page` | No | `1` | Pagination page. |
 
-- **Success**: `200 OK text/html` channel search results.
+- **Success**: `200 OK application/json` channel search results.
 
 ### `GET /api/thumb/{chat_id}?id={message_id}`
 
@@ -249,8 +244,8 @@ Content-Type: image/jpeg
 | `id` | Yes | Telegram message ID for the file. |
 | `hash` | Yes | First six characters of the Telegram file unique ID. Used as a lightweight access/integrity check by the stream route. |
 
-- **Success**: `200 OK text/html` watch page that embeds or links to the streaming/download URL.
-- **Errors**: `403 Forbidden` for invalid hash, `404 Not Found` for missing Telegram file, `302 Found` to `/login` if unauthenticated.
+- **Success**: `200 OK application/json` with the validated file ID, hash, and `stream_url`.
+- **Errors**: `401 Unauthorized` if unauthenticated.
 
 ### `GET /{chat_id}/{encoded_name}?id={message_id}&hash={hash}`
 
@@ -302,7 +297,7 @@ Accept-Ranges: bytes
 | `thumbnail` | No | Thumbnail URL/path stored with the folder. |
 | `parent_dir` | Yes | Parent folder reference. Values containing `db=` are normalized to the ID after `db=`; otherwise the parent becomes `root`. |
 
-- **Success**: `302 Found` redirect to `/` for root folders or `/playlist?db={parent}` for nested folders.
+- **Success**: `200 OK application/json` with `created: true` and `parent_folder`.
 - **Non-admin**: JSON `{"msg":"Who the hell you are"}`.
 
 ### `POST /delete`
@@ -315,7 +310,7 @@ Accept-Ranges: bytes
 | `delete_id` | Yes | Folder/file database ID to delete. |
 | `parent` | Yes | Parent folder ID or `root`. |
 
-- **Success**: `302 Found` redirect to the parent listing.
+- **Success**: `200 OK application/json` with `deleted: true` and `parent_folder`.
 - **Failure**: `500 Internal Server Error` if database deletion fails.
 
 ### `POST /edit`
@@ -330,7 +325,7 @@ Accept-Ranges: bytes
 | `thumbnail` | No | Replacement thumbnail. |
 | `parent` | Yes | Parent folder ID or `root`. |
 
-- **Success**: `302 Found` redirect to the parent listing.
+- **Success**: `200 OK application/json` with `updated: true` and `parent_folder`.
 - **Failure**: `500 Internal Server Error` if update fails.
 
 ### `POST /edit_post`
@@ -345,7 +340,7 @@ Accept-Ranges: bytes
 | `filethumbnail` | No | Replacement thumbnail. |
 | `file_folder_id` | Yes | Parent folder ID or `root`. |
 
-- **Success**: `302 Found` redirect to the parent listing.
+- **Success**: `200 OK application/json` with `updated: true` and `parent_folder`.
 - **Failure**: `500 Internal Server Error` if update fails.
 
 ### `GET /searchDbFol?query={query}`
@@ -381,7 +376,7 @@ The exact object fields depend on the database helper implementation.
 | `folderId` | Yes | Destination playlist folder ID or `root`. |
 | `selectedIds` | Yes | Comma-separated entries. Each entry must be `file_id|hash|filename|size|file_type|thumbnail`. |
 
-- **Success**: adds formatted file records to the database and redirects to `/` or `/playlist?db={folderId}`.
+- **Success**: `200 OK application/json` with the number of created records and `parent_folder`.
 - **Validation failure**: returns an error object from the handler if required form data is missing.
 
 Example `selectedIds` value:
@@ -397,9 +392,9 @@ Example `selectedIds` value:
 
 | Parameter | Required | Description |
 | --- | --- | --- |
-| `chatId` | Yes | Use `home` to clear global cache and redirect home, or a channel ID without `-100` to clear that channel cache. |
+| `chatId` | Yes | Use `home` to clear global cache, or a channel ID without `-100` to clear that channel cache. |
 
-- **Success**: `302 Found` redirect to `/` when `chatId=home`, otherwise `/channel/{chat_id}`.
+- **Success**: `200 OK application/json` with the reloaded target.
 - **Non-admin**: JSON `{"msg":"Who the hell you are"}`.
 
 ### `POST /config`
@@ -412,7 +407,7 @@ Example `selectedIds` value:
 | `channel` | No | Replacement configured auth channel value stored in the database config. |
 | `theme` | No | Replacement theme value stored in the database config. |
 
-- **Success**: `302 Found` redirect to `/`.
+- **Success**: `200 OK application/json` with `updated: true`.
 - **Failure**: `500 Internal Server Error` if config update fails.
 
 ## Streaming and download behavior
@@ -443,8 +438,8 @@ curl -L -b cookies.txt \
 
 - Use the backend as a session-cookie service. Log in with `POST /login`, store the returned cookie, and include it on User/Admin routes.
 - Public media and thumbnail URLs can be fetched without a login session in the current implementation, but watch/list/search pages require login.
-- Several endpoints return server-rendered HTML rather than JSON. If your frontend needs pure JSON APIs, add new routes instead of scraping HTML from these compatibility routes.
+- Browse, search, login, watch, and mutation endpoints return JSON; thumbnail and streaming endpoints return the requested media bytes.
 - Keep admin credentials and admin-only mutations away from untrusted clients. In particular, `POST /send` currently has no session check in the route handler and should be protected by your frontend/API gateway or fixed server-side before public exposure.
 - Normalize channel IDs consistently: route URLs generally use the numeric channel ID without `-100`, while database records and Telegram client calls usually use `-100...`.
-- Expect redirects (`302 Found`) from login/logout and mutation routes. API clients may need to disable automatic redirects when they want to inspect success/failure programmatically.
+- Use the JSON authentication status and HTTP status codes directly; no redirect handling is required for API requests.
 - For video players and resumable downloaders, prefer the direct `/{chat_id}/{encoded_name}` URL with `Range` requests and handle `206`, `416`, `403`, and `404` explicitly.
