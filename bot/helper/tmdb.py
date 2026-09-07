@@ -64,6 +64,7 @@ def fetch_metadata(raw_title: str) -> dict[str, Any]:
     metadata = {
         "tmdb_id": None,
         "tmdb_type": None,
+        "tmdb_title": None,
         "season": None,
         "episode": None,
         "poster_url": FALLBACK_POSTER,
@@ -78,6 +79,7 @@ def fetch_metadata(raw_title: str) -> dict[str, Any]:
             "episode": episode,
         })
         details = _request(f"/tv/{tmdb_id}", {})
+        metadata["tmdb_title"] = details.get("name") or details.get("original_name")
         if poster_path := details.get("poster_path"):
             metadata["poster_url"] = f"{POSTER_BASE_URL}{poster_path}"
         return metadata
@@ -109,6 +111,7 @@ def fetch_metadata(raw_title: str) -> dict[str, Any]:
     metadata.update({
         "tmdb_id": result.get("id"),
         "tmdb_type": media_type,
+        "tmdb_title": result.get("title") or result.get("name") or result.get("original_title") or result.get("original_name"),
         "poster_url": f"{POSTER_BASE_URL}{poster_path}" if poster_path else FALLBACK_POSTER,
     })
     return metadata
